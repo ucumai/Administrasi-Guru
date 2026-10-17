@@ -1430,6 +1430,58 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
     return map;
   }, [dataNilaiList, selectedKelas, classStudents, activeMapelNames]);
 
+  // Helper to re-sync a report record dynamically with ALL latest TPs from Bank TP for student's class and subject
+  const refreshRecordWithLatestTp = (rec: RaportRecord, studentClass: string): RaportRecord => {
+    if (!rec || !Array.isArray(rec.nilaiMapel)) return rec;
+
+    const selK = (studentClass || rec.kelas || "").toLowerCase().trim();
+
+    const updatedNilaiMapel = rec.nilaiMapel.map((nm) => {
+      const targetMapel = nm.mapel;
+      if (!targetMapel) return nm;
+
+      const finalVal = typeof nm.nilaiAkhir === "number" ? nm.nilaiAkhir : 80;
+
+      // Extract Bank TP items for this subject & class with flexible matching
+      const availableTps = effectiveTpBank[targetMapel] || DEFAULT_TP_TEMPLATES[targetMapel] || [];
+      const mapelBankItems = bankTpList?.filter((b) => {
+        if (!b.mapel || !b.tujuanPembelajaran) return false;
+        const bMapel = b.mapel.toLowerCase().trim();
+        const tMapel = targetMapel.toLowerCase().trim();
+        const matchMapel =
+          bMapel === tMapel ||
+          bMapel.includes(tMapel) ||
+          tMapel.includes(bMapel) ||
+          (bMapel.includes("agama") && tMapel.includes("agama")) ||
+          (bMapel.includes("ipas") && tMapel.includes("ipas")) ||
+          (bMapel.includes("pancasila") && tMapel.includes("pancasila")) ||
+          (bMapel.includes("mtk") && tMapel.includes("matematika")) ||
+          (bMapel.includes("matematika") && tMapel.includes("mtk"));
+
+        if (!matchMapel) return false;
+
+        const itemK = (b.kelas || "").toLowerCase().trim();
+        const isSemua = !b.kelas || itemK === "semua kelas" || itemK === "semua" || itemK === "";
+        const isMatchK = isSemua || itemK === selK || itemK.includes(selK) || selK.includes(itemK);
+        return isMatchK;
+      });
+
+      const desc = generateFallbackDeskripsiFromTp(targetMapel, finalVal, availableTps, mapelBankItems);
+
+      return {
+        ...nm,
+        capaianKompetensiTinggi: desc.tinggi,
+        capaianKompetensiPerluBimbingan: desc.perluBimbingan,
+        deskripsi: desc.tinggi
+      };
+    });
+
+    return {
+      ...rec,
+      nilaiMapel: updatedNilaiMapel
+    };
+  };
+
   // Build or Get Raport Record for a Student with full cloud & local persistence
   const getRaportForStudent = (siswa: Siswa): RaportRecord => {
     const cleanTahun = selectedTahunAjaran.replace(/\//g, "-");
@@ -1438,52 +1490,65 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
     const altDocId2 = `raport_${siswa.id}_${selectedPeriode}`;
     const altDocId3 = `raport_${siswa.id}`;
 
-    // 1. Check in-memory state for any matching key
-    if (raportRecords[primaryDocId]) return raportRecords[primaryDocId];
-    if (raportRecords[altDocId1]) return { ...raportRecords[altDocId1], id: primaryDocId };
-    if (raportRecords[altDocId2]) return { ...raportRecords[altDocId2], id: primaryDocId };
-    if (raportRecords[altDocId3]) return { ...raportRecords[altDocId3], id: primaryDocId };
+    let baseRecord: RaportRecord | undefined;
 
-    // 1b. Search in-memory state values for matching student ID & period
-    const foundInState = Object.values(raportRecords).find(
-      (r: RaportRecord) => r && r.idSiswa === siswa.id && (r.periode === selectedPeriode || !r.periode)
-    );
-    if (foundInState) {
-      return { ...(foundInState as RaportRecord), id: primaryDocId };
+    // 1. Check in-memory state for any matching key
+    if (raportRecords[primaryDocId]) baseRecord = raportRecords[primaryDocId];
+    else if (raportRecords[altDocId1]) baseRecord = { ...raportRecords[altDocId1], id: primaryDocId };
+    else if (raportRecords[altDocId2]) baseRecord = { ...raportRecords[altDocId2], id: primaryDocId };
+    else if (raportRecords[altDocId3]) baseRecord = { ...raportRecords[altDocId3], id: primaryDocId };
+    else {
+      // 1b. Search in-memory state values for matching student ID & period
+      const foundInState = Object.values(raportRecords).find(
+        (r: RaportRecord) => r && r.idSiswa === siswa.id && (r.periode === selectedPeriode || !r.periode)
+      );
+      if (foundInState) {
+        baseRecord = { ...(foundInState as RaportRecord), id: primaryDocId };
+      }
     }
 
-    // 2. Check localStorage cache
-    try {
-      const cachedStr = localStorage.getItem("edadmin_persisted_raport_records");
-      if (cachedStr) {
-        const cachedMap = JSON.parse(cachedStr);
-        if (cachedMap[primaryDocId]) return cachedMap[primaryDocId];
-        if (cachedMap[altDocId1]) return { ...cachedMap[altDocId1], id: primaryDocId };
-        if (cachedMap[altDocId2]) return { ...cachedMap[altDocId2], id: primaryDocId };
-
-        const foundInCache = Object.values(cachedMap).find(
-          (r: any) => r && r.idSiswa === siswa.id && (r.periode === selectedPeriode || !r.periode)
-        ) as RaportRecord | undefined;
-        if (foundInCache) {
-          return { ...foundInCache, id: primaryDocId };
+    // 2. Check localStorage cache if not found in state
+    if (!baseRecord) {
+      try {
+        const cachedStr = localStorage.getItem("edadmin_persisted_raport_records");
+        if (cachedStr) {
+          const cachedMap = JSON.parse(cachedStr);
+          if (cachedMap[primaryDocId]) baseRecord = cachedMap[primaryDocId];
+          else if (cachedMap[altDocId1]) baseRecord = { ...cachedMap[altDocId1], id: primaryDocId };
+          else if (cachedMap[altDocId2]) baseRecord = { ...cachedMap[altDocId2], id: primaryDocId };
+          else {
+            const foundInCache = Object.values(cachedMap).find(
+              (r: any) => r && r.idSiswa === siswa.id && (r.periode === selectedPeriode || !r.periode)
+            ) as RaportRecord | undefined;
+            if (foundInCache) {
+              baseRecord = { ...foundInCache, id: primaryDocId };
+            }
+          }
         }
+      } catch {}
+    }
+
+    // 3. Check if exists in bukuIndukList (cloud data) if not found in state or cache
+    if (!baseRecord) {
+      const existingBiDoc = bukuIndukList?.find(
+        (b: any) =>
+          (b.id === primaryDocId || b.id === altDocId1 || b.id === altDocId2 || b.id === altDocId3 || (b.idSiswa === siswa.id && (b.periode === selectedPeriode || !b.periode))) &&
+          Array.isArray(b.nilaiMapel) &&
+          b.nilaiMapel.length > 0
+      ) as RaportRecord | undefined;
+
+      if (existingBiDoc && Array.isArray(existingBiDoc.nilaiMapel) && existingBiDoc.nilaiMapel.length > 0) {
+        baseRecord = {
+          ...existingBiDoc,
+          id: primaryDocId,
+          tahunAjaran: selectedTahunAjaran
+        };
       }
-    } catch {}
+    }
 
-    // 3. Check if exists in bukuIndukList (cloud data)
-    const existingBiDoc = bukuIndukList?.find(
-      (b: any) =>
-        (b.id === primaryDocId || b.id === altDocId1 || b.id === altDocId2 || b.id === altDocId3 || (b.idSiswa === siswa.id && (b.periode === selectedPeriode || !b.periode))) &&
-        Array.isArray(b.nilaiMapel) &&
-        b.nilaiMapel.length > 0
-    ) as RaportRecord | undefined;
-
-    if (existingBiDoc && Array.isArray(existingBiDoc.nilaiMapel) && existingBiDoc.nilaiMapel.length > 0) {
-      return {
-        ...existingBiDoc,
-        id: primaryDocId,
-        tahunAjaran: selectedTahunAjaran
-      };
+    // If record exists, refresh descriptions with ALL current Bank TPs and return
+    if (baseRecord) {
+      return refreshRecordWithLatestTp(baseRecord, siswa.kelas);
     }
 
     // 4. Fallback baseline: only generated if never saved before
@@ -1512,7 +1577,21 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
       // Filter Bank TP strictly by mapel & student class
       const availableTps = effectiveTpBank[mapel] || DEFAULT_TP_TEMPLATES[mapel] || [];
       const mapelBankItems = bankTpList?.filter((b) => {
-        if (!b.mapel || b.mapel.toLowerCase().trim() !== mapel.toLowerCase().trim()) return false;
+        if (!b.mapel || !b.tujuanPembelajaran) return false;
+        const bMapel = b.mapel.toLowerCase().trim();
+        const tMapel = mapel.toLowerCase().trim();
+        const matchMapel =
+          bMapel === tMapel ||
+          bMapel.includes(tMapel) ||
+          tMapel.includes(bMapel) ||
+          (bMapel.includes("agama") && tMapel.includes("agama")) ||
+          (bMapel.includes("ipas") && tMapel.includes("ipas")) ||
+          (bMapel.includes("pancasila") && tMapel.includes("pancasila")) ||
+          (bMapel.includes("mtk") && tMapel.includes("matematika")) ||
+          (bMapel.includes("matematika") && tMapel.includes("mtk"));
+
+        if (!matchMapel) return false;
+
         const itemK = (b.kelas || "").toLowerCase().trim();
         const selK = (siswa.kelas || "").toLowerCase().trim();
         return !b.kelas || itemK === "semua kelas" || itemK === "semua" || itemK === "" || itemK === selK || itemK.includes(selK) || selK.includes(itemK);
