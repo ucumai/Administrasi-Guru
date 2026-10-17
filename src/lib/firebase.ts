@@ -1,4 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
+import "firebase/auth";
+import { getAuth } from "firebase/auth";
 import { 
   initializeFirestore,
   getFirestore, 
@@ -37,9 +39,18 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase App
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+export const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+const app = firebaseApp;
 
-const dbId = firebaseConfigData.firestoreDatabaseId || "(default)";
+let _firebaseAuthInstance: ReturnType<typeof getAuth> | null = null;
+export const getFirebaseAuth = () => {
+  if (!_firebaseAuthInstance) {
+    _firebaseAuthInstance = getAuth(firebaseApp);
+  }
+  return _firebaseAuthInstance;
+};
+
+const dbId = (firebaseConfigData as any).firestoreDatabaseId || "(default)";
 
 // Initialize Firestore with persistent multi-tab local cache and long polling
 export const firestore = (() => {
@@ -63,6 +74,19 @@ export const firestore = (() => {
   }
 })();
 
+import { 
+  getSyncMode,
+  isCollectionFresh,
+  markCollectionFresh,
+  recordCacheHit,
+  recordServerWrite,
+  recordLastSyncTime,
+  setQuotaExceededStateInStats,
+  onRefreshRequest,
+  onSyncModeChange,
+  DEFAULT_TTL_MINUTES
+} from "./firestoreOptimizer";
+
 // Quota exhaustion listener to inform UI and users gracefully
 type QuotaListener = (isExceeded: boolean) => void;
 const quotaListeners = new Set<QuotaListener>();
@@ -76,9 +100,13 @@ export function onQuotaExceededChange(listener: QuotaListener) {
   };
 }
 
+import { autoFallbackFromGoogleSheetsOrSnapshot } from "./autoBackupManager";
+
 export function notifyQuotaExceeded() {
   if (!isQuotaExceededState) {
     isQuotaExceededState = true;
+    setQuotaExceededStateInStats(true);
+    autoFallbackFromGoogleSheetsOrSnapshot();
     quotaListeners.forEach((fn) => {
       try {
         fn(true);
@@ -162,66 +190,204 @@ export const COLLECTIONS = {
   RAPORT_RECORDS: "raport_records"
 };
 
-// Generic Realtime Subscription with instant cache hydration and quota fallback
+// Generic Realtime Subscription with instant cache hydration, SWR with TTL, and anti-limit optimization
 export function subscribeCollection<T>(collectionName: string, callback: (data: T[]) => void) {
   const cacheKey = `edadmin_cache_${collectionName}`;
+  let isUnsubscribed = false;
+  let activeUnsubscribe: (() => void) | null = null;
 
-  // 1. Immediately emit cached data if available (instant offline/quota-proof display)
+  // 1. Immediately emit cached data if available (instant offline/quota-proof display in 0ms)
+  let cachedData: T[] | null = null;
   try {
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        callback(parsed);
+      if (Array.isArray(parsed)) {
+        cachedData = parsed;
+        if (parsed.length > 0) {
+          callback(parsed);
+        }
       }
     }
   } catch (err) {
     console.warn(`Error reading local cache for ${collectionName}:`, err);
   }
 
-  const colRef = collection(firestore, collectionName);
-  return onSnapshot(
-    colRef, 
-    (snapshot) => {
+  // Helper to attach Firestore listener
+  const attachListener = () => {
+    if (isUnsubscribed) return;
+    if (activeUnsubscribe) {
+      try { activeUnsubscribe(); } catch {}
+      activeUnsubscribe = null;
+    }
+
+    const colRef = collection(firestore, collectionName);
+    activeUnsubscribe = onSnapshot(
+      colRef, 
+      (snapshot) => {
+        const items: T[] = [];
+        snapshot.forEach((docSnap) => {
+          items.push({ id: docSnap.id, ...docSnap.data() } as unknown as T);
+        });
+
+        // 2. Persist fresh server data into local cache & record sync
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(items));
+          markCollectionFresh(collectionName);
+          recordLastSyncTime();
+        } catch (err) {
+          console.warn(`Error updating local cache for ${collectionName}:`, err);
+        }
+
+        callback(items);
+      },
+      (error) => {
+        const errMsg = error?.message || String(error);
+        console.warn(`Firestore subscription notice on ${collectionName}:`, errMsg);
+
+        // Check if Quota was exhausted
+        if (
+          errMsg.toLowerCase().includes("quota") ||
+          errMsg.toLowerCase().includes("resource-exhausted") ||
+          (error as any)?.code === "resource-exhausted"
+        ) {
+          notifyQuotaExceeded();
+        }
+
+        // Fallback: Ensure UI has cached data
+        try {
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed)) {
+              callback(parsed);
+            }
+          }
+        } catch {}
+      }
+    );
+  };
+
+  // Helper to fetch once via getDocs (used when manual refresh is clicked in Zero-Cost mode)
+  const fetchOnce = async () => {
+    try {
+      const colRef = collection(firestore, collectionName);
+      const snapshot = await getDocs(colRef);
       const items: T[] = [];
       snapshot.forEach((docSnap) => {
         items.push({ id: docSnap.id, ...docSnap.data() } as unknown as T);
       });
-
-      // 2. Persist fresh server data into local cache
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(items));
-      } catch (err) {
-        console.warn(`Error updating local cache for ${collectionName}:`, err);
-      }
-
+      localStorage.setItem(cacheKey, JSON.stringify(items));
+      markCollectionFresh(collectionName);
+      recordLastSyncTime();
       callback(items);
-    },
-    (error) => {
-      const errMsg = error?.message || String(error);
-      console.warn(`Firestore subscription notice on ${collectionName}:`, errMsg);
-
-      // Check if Quota was exhausted
-      if (
-        errMsg.toLowerCase().includes("quota") ||
-        errMsg.toLowerCase().includes("resource-exhausted") ||
-        (error as any)?.code === "resource-exhausted"
-      ) {
+    } catch (err: any) {
+      const errMsg = err?.message || String(err);
+      if (errMsg.toLowerCase().includes("quota") || err?.code === "resource-exhausted") {
         notifyQuotaExceeded();
       }
-
-      // Fallback: Ensure UI has cached data
-      try {
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed)) {
-            callback(parsed);
-          }
-        }
-      } catch {}
     }
-  );
+  };
+
+  // 2. Decide connection policy based on sync mode
+  const syncMode = getSyncMode();
+  const isCoreCollection = collectionName === COLLECTIONS.USERS || collectionName === COLLECTIONS.PENGATURAN;
+
+  if (syncMode === "zero_cost") {
+    // Mode Zero-Cost: 100% served from local cache. 0 reads!
+    if (cachedData && cachedData.length > 0) {
+      recordCacheHit(cachedData.length);
+    }
+  } else if (syncMode === "auto") {
+    // Mode Otomatis Anti-Limit (Recommended):
+    // Core collections (Users, Pengaturan) have continuous listener
+    if (isCoreCollection) {
+      attachListener();
+    } else {
+      const isFresh = isCollectionFresh(collectionName, DEFAULT_TTL_MINUTES);
+      if (isFresh && cachedData && cachedData.length > 0) {
+        // Cache is fresh within TTL! Skip network request, record saved quota
+        recordCacheHit(cachedData.length);
+      } else {
+        // Stale or empty cache -> attach listener to get fresh data
+        attachListener();
+      }
+    }
+  } else {
+    // Mode Realtime: always attach listener
+    attachListener();
+  }
+
+  // 3. Tab visibility optimization: Pause listener when tab is inactive to prevent burning reads in background!
+  const handleVisibilityChange = () => {
+    if (isUnsubscribed) return;
+    if (document.hidden) {
+      // Tab went into background/minimized -> detach listener to save reads
+      if (!isCoreCollection && activeUnsubscribe) {
+        try { activeUnsubscribe(); } catch {}
+        activeUnsubscribe = null;
+      }
+    } else {
+      // Tab returned to focus -> re-attach if not fresh or if in realtime mode
+      if (!isCoreCollection && !activeUnsubscribe) {
+        const mode = getSyncMode();
+        if (mode === "realtime" || (mode === "auto" && !isCollectionFresh(collectionName, DEFAULT_TTL_MINUTES))) {
+          attachListener();
+        }
+      }
+    }
+  };
+
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+  }
+
+  // 4. Handle manual force refresh request
+  const unsubRefresh = onRefreshRequest((targetCollection) => {
+    if (!targetCollection || targetCollection === collectionName) {
+      if (getSyncMode() === "zero_cost") {
+        fetchOnce();
+      } else {
+        attachListener();
+      }
+    }
+  });
+
+  // 5. Handle sync mode change live
+  const unsubMode = onSyncModeChange((newMode) => {
+    if (newMode === "zero_cost") {
+      if (!isCoreCollection && activeUnsubscribe) {
+        try { activeUnsubscribe(); } catch {}
+        activeUnsubscribe = null;
+      }
+    } else if (newMode === "realtime") {
+      if (!activeUnsubscribe) {
+        attachListener();
+      }
+    } else if (newMode === "auto") {
+      if (!isCoreCollection && isCollectionFresh(collectionName, DEFAULT_TTL_MINUTES)) {
+        if (activeUnsubscribe) {
+          try { activeUnsubscribe(); } catch {}
+          activeUnsubscribe = null;
+        }
+      } else if (!activeUnsubscribe) {
+        attachListener();
+      }
+    }
+  });
+
+  return () => {
+    isUnsubscribed = true;
+    if (typeof document !== "undefined") {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    }
+    unsubRefresh();
+    unsubMode();
+    if (activeUnsubscribe) {
+      try { activeUnsubscribe(); } catch {}
+      activeUnsubscribe = null;
+    }
+  };
 }
 
 // Helper to clean undefined properties before sending to Firestore
@@ -235,7 +401,7 @@ function sanitizeData<T extends Record<string, any>>(data: T): T {
   return clean as T;
 }
 
-// Single Document Save/Update with local cache mirror
+// Single Document Save/Update with local cache mirror & optimistic update
 export async function saveDocument(collectionName: string, id: string, data: Record<string, any>) {
   const cacheKey = `edadmin_cache_${collectionName}`;
   const cleanData = sanitizeData({ ...data, id, updatedAt: Date.now() });
@@ -251,11 +417,13 @@ export async function saveDocument(collectionName: string, id: string, data: Rec
       list.push(cleanData);
     }
     localStorage.setItem(cacheKey, JSON.stringify(list));
+    markCollectionFresh(collectionName);
   } catch {}
 
   try {
     const docRef = doc(firestore, collectionName, id);
     await setDoc(docRef, cleanData, { merge: true });
+    recordServerWrite(1);
   } catch (err: any) {
     const errMsg = err?.message || String(err);
     if (errMsg.toLowerCase().includes("quota") || err?.code === "resource-exhausted") {
@@ -277,12 +445,14 @@ export async function deleteDocument(collectionName: string, id: string) {
       let list: any[] = JSON.parse(cached);
       list = list.filter((item) => item.id !== id);
       localStorage.setItem(cacheKey, JSON.stringify(list));
+      markCollectionFresh(collectionName);
     }
   } catch {}
 
   try {
     const docRef = doc(firestore, collectionName, id);
     await deleteDoc(docRef);
+    recordServerWrite(1);
   } catch (err: any) {
     const errMsg = err?.message || String(err);
     if (errMsg.toLowerCase().includes("quota") || err?.code === "resource-exhausted") {
@@ -308,6 +478,7 @@ export async function batchSaveDocuments(collectionName: string, items: Array<{ 
       map.set(item.id, { ...(map.get(item.id) || {}), ...clean });
     });
     localStorage.setItem(cacheKey, JSON.stringify(Array.from(map.values())));
+    markCollectionFresh(collectionName);
   } catch {}
 
   try {
@@ -318,6 +489,7 @@ export async function batchSaveDocuments(collectionName: string, items: Array<{ 
       batch.set(docRef, cleanData, { merge: true });
     });
     await batch.commit();
+    recordServerWrite(items.length);
   } catch (err: any) {
     const errMsg = err?.message || String(err);
     if (errMsg.toLowerCase().includes("quota") || err?.code === "resource-exhausted") {

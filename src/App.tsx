@@ -31,6 +31,7 @@ import { GeneratorAILainnyaView } from "./components/GeneratorAILainnyaView";
 import { PusatLaporanView } from "./components/PusatLaporanView";
 import { PengaturanView } from "./components/PengaturanView";
 import { ResetDatabaseView } from "./components/ResetDatabaseView";
+import { GoogleSheetsBackupView } from "./components/GoogleSheetsBackupView";
 
 import { 
   subscribeCollection, 
@@ -43,6 +44,10 @@ import {
 import { initMidnightAutoRefresh, onDayRollover, getLocalDateStr } from "./lib/dateUtils";
 import { initSecurityProtection, cleanupSecurityProtection } from "./lib/securityProtection";
 import { applyGlobalTheme } from "./lib/themeManager";
+import { 
+  scheduleSilentBackgroundBackup, 
+  autoFallbackFromGoogleSheetsOrSnapshot 
+} from "./lib/autoBackupManager";
 
 import { 
   Siswa, 
@@ -195,7 +200,20 @@ export default function App() {
   useEffect(() => {
     return onQuotaExceededChange((exceeded) => {
       setIsQuotaExceeded(exceeded);
+      if (exceeded) {
+        autoFallbackFromGoogleSheetsOrSnapshot();
+      }
     });
+  }, []);
+
+  // Initial load check: if collections remain empty due to quota or new domain, trigger auto-fallback
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (siswaList.length === 0 && userList.length === 0) {
+        autoFallbackFromGoogleSheetsOrSnapshot();
+      }
+    }, 1800);
+    return () => clearTimeout(timer);
   }, []);
 
   const [config, setConfig] = useState<Pengaturan>(DEFAULT_CONFIG);
@@ -205,6 +223,23 @@ export default function App() {
       applyGlobalTheme(config.themeConfig);
     }
   }, [config?.themeConfig]);
+
+  // Silent Background Auto-Backup to Google Sheets / Snapshot whenever data updates
+  useEffect(() => {
+    if (siswaList.length > 0 || userList.length > 0 || absensiList.length > 0) {
+      scheduleSilentBackgroundBackup({
+        siswaList,
+        userList,
+        mapelList,
+        jadwalList,
+        absensiList,
+        nilaiList,
+        agendaList,
+        tabunganList,
+        config
+      });
+    }
+  }, [siswaList, userList, mapelList, jadwalList, absensiList, nilaiList, agendaList, tabunganList, config]);
 
   // Subscribe to Firebase real-time collections
   useEffect(() => {
@@ -685,6 +720,21 @@ export default function App() {
 
           {activeTab === "ailainnya" && <GeneratorAILainnyaView />}
 
+          {activeTab === "cadangan_sheets" && (
+            <GoogleSheetsBackupView
+              siswaList={siswaList}
+              userList={userList}
+              mapelList={mapelList}
+              jadwalList={jadwalList}
+              absensiList={absensiList}
+              nilaiList={nilaiList}
+              agendaList={agendaList}
+              tabunganList={tabunganList}
+              config={config}
+              currentUser={currentUser}
+            />
+          )}
+
           {activeTab === "laporan" && (
             <PusatLaporanView
               siswaList={siswaList}
@@ -704,6 +754,7 @@ export default function App() {
               userList={userList}
               currentUser={currentUser}
               onNavigateToReset={() => handleTabChange("resetdb")}
+              onNavigateToSheets={() => handleTabChange("cadangan_sheets")}
             />
           )}
 

@@ -152,28 +152,12 @@ function getFaseByClass(kelas: string): string {
   return "Fase A";
 }
 
-function generateDefaultDeskripsi(mapel: string, nilaiNum: number): { tinggi: string; perluBimbingan: string } {
-  if (nilaiNum >= 90) {
-    return {
-      tinggi: `Menunjukkan penguasaan yang sangat istimewa dalam seluruh materi pokok dan tujuan pembelajaran ${mapel}. Mampu bernalar kritis dan mandiri.`,
-      perluBimbingan: `Pertahankan prestasi unggul dan perluas pengayaan pada studi kasus aplikatif.`
-    };
-  } else if (nilaiNum >= 80) {
-    return {
-      tinggi: `Menunjukkan penguasaan materi yang sangat baik dalam memahami konsep dasar dan penerapan capaian pembelajaran ${mapel}.`,
-      perluBimbingan: `Perlu peningkatan konsistensi pemahaman pada pendalaman materi yang lebih kompleks.`
-    };
-  } else if (nilaiNum >= 75) {
-    return {
-      tinggi: `Menunjukkan pemahaman yang baik dan telah mencapai kriteria ketuntasan minimal pada mata pelajaran ${mapel}.`,
-      perluBimbingan: `Perlu pendampingan dan latihan tambahan pada beberapa indikator soal dan pemecahan masalah.`
-    };
-  } else {
-    return {
-      tinggi: `Menunjukkan kemauan belajar yang cukup pada konsep pengenalan materi ${mapel}.`,
-      perluBimbingan: `Sangat membutuhkan bimbingan intensif dan remedial untuk mencapai tujuan pembelajaran pokok.`
-    };
+function generateDefaultDeskripsi(mapel: string, nilaiNum: number, bankItems?: BankTpItem[]): { tinggi: string; perluBimbingan: string } {
+  if (bankItems && bankItems.length > 0) {
+    return generateFallbackDeskripsiFromTp(mapel, nilaiNum, [], bankItems);
   }
+  const defaultTps = DEFAULT_TP_TEMPLATES[mapel] || [];
+  return generateFallbackDeskripsiFromTp(mapel, nilaiNum, defaultTps);
 }
 
 export const DEFAULT_TP_TEMPLATES: Record<string, string[]> = {
@@ -231,11 +215,30 @@ export const DEFAULT_TP_TEMPLATES: Record<string, string[]> = {
 
 export function cleanTpText(text: string, mapelFallback: string = ""): string {
   let t = (text || "").trim();
-  // Remove numbering or prefixes such as "1.1 ", "TP 1.1: ", "TP 1 - "
+  // Remove numbering or prefixes such as "1.1 ", "TP 1.1: ", "TP 1 - ", "1. "
   t = t.replace(/^(TP\s*[\d.]*[:\s-]*|\d+[\.\)]\s*)/i, "").trim();
   if (t.endsWith(".")) t = t.slice(0, -1);
   if (!t) return `konsep materi ${mapelFallback}`.trim();
   return t.charAt(0).toLowerCase() + t.slice(1);
+}
+
+export function combineTpTexts(tpList: string[], mapelFallback: string = ""): string {
+  const cleaned = tpList
+    .map((t) => cleanTpText(t, mapelFallback))
+    .filter(Boolean);
+
+  if (cleaned.length === 0) {
+    return `materi pokok ${mapelFallback}`.trim();
+  }
+  if (cleaned.length === 1) {
+    return cleaned[0];
+  }
+  if (cleaned.length === 2) {
+    return `${cleaned[0]} serta ${cleaned[1]}`;
+  }
+  const last = cleaned[cleaned.length - 1];
+  const initial = cleaned.slice(0, -1).join(", ");
+  return `${initial}, serta ${last}`;
 }
 
 export function generateFallbackDeskripsiFromTp(
@@ -244,66 +247,35 @@ export function generateFallbackDeskripsiFromTp(
   tps: string[],
   bankItems?: BankTpItem[]
 ): { tinggi: string; perluBimbingan: string } {
-  const rawList = tps && tps.length > 0 ? tps : (DEFAULT_TP_TEMPLATES[mapel] || [
-    `memahami konsep dasar dan materi pokok ${mapel}`,
-    `menerapkan pemahaman dalam menyelesaikan tugas kontekstual`,
-    `berpikir kritis dan menyajikan hasil telaah secara mandiri`
-  ]);
+  let allTps: string[] = [];
 
-  let tpBest = "";
-  let tpSecond = "";
-  let tpNeedHelp = "";
-
-  // Prioritize based on Bank TP items and their categorized difficulty if available
+  // Extract all TP texts from bankItems if provided
   if (bankItems && bankItems.length > 0) {
-    const tinggiItems = bankItems.filter((b) => b.kategori === "Tinggi");
-    const sedangItems = bankItems.filter((b) => b.kategori === "Sedang");
-    const bimbinganItems = bankItems.filter((b) => b.kategori === "Bimbingan" || b.kategori === "Umum");
-
-    if (nilaiNum >= 90) {
-      tpBest = tinggiItems[0]?.tujuanPembelajaran || rawList[0] || `konsep utama ${mapel}`;
-      tpSecond = tinggiItems[1]?.tujuanPembelajaran || sedangItems[0]?.tujuanPembelajaran || rawList[1] || tpBest;
-      tpNeedHelp = rawList[rawList.length - 1] || `pengayaan materi aplikatif ${mapel}`;
-    } else if (nilaiNum >= 80) {
-      tpBest = sedangItems[0]?.tujuanPembelajaran || tinggiItems[0]?.tujuanPembelajaran || rawList[0] || `konsep dasar ${mapel}`;
-      tpSecond = sedangItems[1]?.tujuanPembelajaran || rawList[1] || tpBest;
-      tpNeedHelp = tinggiItems[0]?.tujuanPembelajaran || rawList[rawList.length - 1] || `materi lanjutan ${mapel}`;
-    } else if (nilaiNum >= 75) {
-      tpBest = bimbinganItems[0]?.tujuanPembelajaran || rawList[0] || `konsep dasar ${mapel}`;
-      tpNeedHelp = sedangItems[0]?.tujuanPembelajaran || tinggiItems[0]?.tujuanPembelajaran || rawList[rawList.length - 1] || `pemecahan masalah ${mapel}`;
-    } else {
-      tpBest = bimbinganItems[0]?.tujuanPembelajaran || rawList[0] || `pengenalan materi ${mapel}`;
-      tpNeedHelp = bimbinganItems[1]?.tujuanPembelajaran || sedangItems[0]?.tujuanPembelajaran || rawList[rawList.length - 1] || `kompetensi dasar ${mapel}`;
-    }
+    allTps = bankItems.map((b) => b.tujuanPembelajaran).filter(Boolean);
   }
 
-  if (!tpBest) tpBest = rawList[0] || `konsep utama ${mapel}`;
-  if (!tpSecond) tpSecond = rawList[1] || tpBest;
-  if (!tpNeedHelp) tpNeedHelp = rawList[rawList.length - 1] || `pendalaman materi ${mapel}`;
+  // Fallback to tps array
+  if (allTps.length === 0 && tps && tps.length > 0) {
+    allTps = tps;
+  }
 
-  const cBest = cleanTpText(tpBest, mapel);
-  const cSecond = cleanTpText(tpSecond, mapel);
-  const cNeedHelp = cleanTpText(tpNeedHelp, mapel);
+  // Fallback to default template for mapel
+  if (allTps.length === 0) {
+    allTps = DEFAULT_TP_TEMPLATES[mapel] || [`memahami konsep dasar dan materi pokok ${mapel}`];
+  }
 
-  if (nilaiNum >= 90) {
+  const combinedTpText = combineTpTexts(allTps, mapel);
+
+  // Check against passing standard (KKTP >= 75)
+  if (nilaiNum >= 75) {
     return {
-      tinggi: `Menunjukkan penguasaan sangat istimewa dalam ${cBest} serta terampil dalam ${cSecond}. Mampu bernalar kritis secara mandiri.`,
-      perluBimbingan: `Pertahankan prestasi unggul dan perluas pengayaan mandiri pada studi kasus aplikatif ${mapel}.`
-    };
-  } else if (nilaiNum >= 80) {
-    return {
-      tinggi: `Menunjukkan penguasaan yang sangat baik dalam ${cBest} dan mampu mengaplikasikan konsep dengan cermat.`,
-      perluBimbingan: `Perlu peningkatan konsistensi dan pendalaman pada ${cNeedHelp}.`
-    };
-  } else if (nilaiNum >= 75) {
-    return {
-      tinggi: `Menunjukkan pemahaman yang cukup baik dan telah mencapai kriteria ketuntasan dalam ${cBest}.`,
-      perluBimbingan: `Perlu pendampingan dan latihan tambahan dalam ${cNeedHelp}.`
+      tinggi: `Menunjukkan penguasaan sangat baik dalam ${combinedTpText}.`,
+      perluBimbingan: `Pertahankan prestasi dan tingkatkan kemandirian dalam pendalaman ${combinedTpText}.`
     };
   } else {
     return {
-      tinggi: `Menunjukkan kemauan belajar pada pengenalan materi ${cBest}.`,
-      perluBimbingan: `Sangat membutuhkan bimbingan intensif dan remedial terarah dalam ${cNeedHelp}.`
+      tinggi: `Menunjukkan kemauan belajar dan pemahaman dasar dalam ${combinedTpText}.`,
+      perluBimbingan: `Perlu peningkatan konsistensi pemahaman dan pendampingan dalam ${combinedTpText}.`
     };
   }
 }
@@ -1537,11 +1509,16 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
         }
       }
 
-      // Check if we have Bank TP for this mapel
+      // Filter Bank TP strictly by mapel & student class
       const availableTps = effectiveTpBank[mapel] || DEFAULT_TP_TEMPLATES[mapel] || [];
-      const desc = availableTps.length > 0
-        ? generateFallbackDeskripsiFromTp(mapel, finalVal, availableTps)
-        : generateDefaultDeskripsi(mapel, finalVal);
+      const mapelBankItems = bankTpList?.filter((b) => {
+        if (!b.mapel || b.mapel.toLowerCase().trim() !== mapel.toLowerCase().trim()) return false;
+        const itemK = (b.kelas || "").toLowerCase().trim();
+        const selK = (siswa.kelas || "").toLowerCase().trim();
+        return !b.kelas || itemK === "semua kelas" || itemK === "semua" || itemK === "" || itemK === selK || itemK.includes(selK) || selK.includes(itemK);
+      });
+
+      const desc = generateFallbackDeskripsiFromTp(mapel, finalVal, availableTps, mapelBankItems);
 
       return {
         mapel,
