@@ -2145,13 +2145,13 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
     }
   };
 
-  // Export PDF with jsPDF
+  // Export PDF with jsPDF on F4 / Folio Paper Format [215.9mm x 330.2mm]
   const handleExportPDF = () => {
     try {
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: "a4"
+        format: [215.9, 330.2] // Official F4 / Folio Paper Format
       });
 
       const targetStudents = selectedSiswaId === "all"
@@ -2163,172 +2163,309 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
         return;
       }
 
+      const pageWidth = 215.9;
+      const pageHeight = 330.2;
+      const centerX = pageWidth / 2;
+
       targetStudents.forEach((student, index) => {
-        if (index > 0) doc.addPage();
+        if (index > 0) doc.addPage([215.9, 330.2], "portrait");
 
         const studentRaport = getRaportForStudent(student);
 
-        // Header Kop Dinas Resmi
-        let topY = 12;
-        if (showKopSekolah) {
-          if (config.Logo_Kiri) {
-            try {
-              doc.addImage(config.Logo_Kiri, "PNG", 14, 10, 16, 16);
-            } catch (e) {}
-          }
-          if (config.Logo_Kanan) {
-            try {
-              doc.addImage(config.Logo_Kanan, "PNG", 180, 10, 16, 16);
-            } catch (e) {}
-          }
+        // -------------------------------------------------------------
+        // RENDER COVER PAGE (If printMode is 'full' or 'cover')
+        // -------------------------------------------------------------
+        if (printMode === "full" || printMode === "cover") {
+          // Double Border Line for Cover
+          doc.setLineWidth(1.2);
+          doc.rect(12, 12, pageWidth - 24, pageHeight - 24);
+          doc.setLineWidth(0.4);
+          doc.rect(14, 14, pageWidth - 28, pageHeight - 28);
 
+          // Top Header
+          let coverY = 32;
           doc.setFontSize(10);
           doc.setFont("helvetica", "bold");
-          doc.text((config.Pemerintah || "PEMERINTAH KABUPATEN BOGOR").toUpperCase(), 105, topY, { align: "center" });
-          doc.text((config.Dinas || "DINAS PENDIDIKAN").toUpperCase(), 105, topY + 4.5, { align: "center" });
-          doc.setFontSize(13);
-          doc.text((config.Nama_Sekolah || "SD NEGERI BABAKAN 04").toUpperCase(), 105, topY + 9.5, { align: "center" });
-          doc.setFontSize(7.5);
+          doc.text((config.Pemerintah || "PEMERINTAH KABUPATEN BOGOR").toUpperCase(), centerX, coverY, { align: "center" });
+          coverY += 5;
+          doc.text((config.Dinas || "DINAS PENDIDIKAN").toUpperCase(), centerX, coverY, { align: "center" });
+          coverY += 8;
+          doc.setFontSize(14);
+          doc.text((config.Nama_Sekolah || "SD NEGERI BABAKAN 04").toUpperCase(), centerX, coverY, { align: "center" });
+          coverY += 8;
+          doc.setFontSize(12);
+          doc.text("LAPORAN HASIL BELAJAR PESERTA DIDIK", centerX, coverY, { align: "center" });
+          coverY += 5;
+          doc.setFontSize(10);
           doc.setFont("helvetica", "normal");
-          const alamatFull = `${config.Alamat_Sekolah || "Kp. Babakan Kulon RT.05/02 Desa Babakan Kec. Ciseeng Kab. Bogor"}${config.NPSN ? ` • NPSN: ${config.NPSN}` : ""}${config.Email_Sekolah ? ` • Email: ${config.Email_Sekolah}` : ""}`;
-          doc.text(alamatFull, 105, topY + 14, { align: "center" });
-          
-          // Garis Ganda Kop Surat
-          doc.setLineWidth(0.6);
-          doc.line(14, topY + 17, 196, topY + 17);
-          doc.setLineWidth(0.2);
-          doc.line(14, topY + 18, 196, topY + 18);
-        }
+          doc.text("( RAPOR KURIKULUM MERDEKA )", centerX, coverY, { align: "center" });
 
-        // Raport Title
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "bold");
-        doc.text("LAPORAN HASIL BELAJAR (RAPOR)", 105, 36, { align: "center" });
-        doc.setFontSize(8.5);
-        doc.setFont("helvetica", "normal");
-        doc.text(`Periode: ${studentRaport.periodeNama} | Tahun Ajaran: ${studentRaport.tahunAjaran}`, 105, 41, { align: "center" });
-
-        // Identitas Siswa
-        doc.setFontSize(8.5);
-        doc.text(`Nama Peserta Didik : ${student.nama}`, 14, 49);
-        doc.text(`NISN / NIS          : ${student.nisn || '-'} / ${student.nis || '-'}`, 14, 54);
-        doc.text(`Kelas / Fase       : ${student.kelas} / ${studentRaport.fase}`, 130, 49);
-        doc.text(`Semester            : ${studentRaport.semester}`, 130, 54);
-
-        // Tabel Nilai (Hanya Mapel yang Dicentang, Diurutkan Sesuai Nomor Urut)
-        const mapelOrderLookup = new Map<string, number>(displayMapelNames.map((m, idx) => [m.toLowerCase(), idx]));
-        const filteredNilaiMapel = studentRaport.nilaiMapel
-          .filter((nm) => mapelOrderLookup.has(nm.mapel.toLowerCase()))
-          .sort((a, b) => {
-            const posA = mapelOrderLookup.get(a.mapel.toLowerCase()) ?? 999;
-            const posB = mapelOrderLookup.get(b.mapel.toLowerCase()) ?? 999;
-            return posA - posB;
-          });
-        const finalNilaiMapel = filteredNilaiMapel.length > 0 ? filteredNilaiMapel : studentRaport.nilaiMapel;
-
-        const tableBody = finalNilaiMapel.map((nm, i) => [
-          i + 1,
-          nm.mapel,
-          nm.nilaiAkhir,
-          nm.capaianKompetensiTinggi || nm.deskripsi || "-"
-        ]);
-
-        autoTable(doc, {
-          startY: 60,
-          head: [["No", "Mata Pelajaran", "Nilai Akhir", "Capaian Kompetensi / Keterangan"]],
-          body: tableBody,
-          theme: "grid",
-          headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold", fontSize: 8, halign: "center" },
-          styles: { fontSize: 8, cellPadding: 2 },
-          columnStyles: {
-            0: { cellWidth: 10, halign: "center" },
-            1: { cellWidth: 55 },
-            2: { cellWidth: 20, halign: "center", fontStyle: "bold" },
-            3: { cellWidth: 95 }
+          // Logo Center
+          coverY += 30;
+          if (config.Logo_Kiri) {
+            try {
+              doc.addImage(config.Logo_Kiri, "PNG", centerX - 20, coverY, 40, 40);
+            } catch (e) {}
           }
-        });
+          coverY += 50;
 
-        let currentY = (doc as any).lastAutoTable.finalY + 6;
-
-        // Absensi & Ekstrakurikuler Table
-        const attRows = [
-          ["Sakit", `${studentRaport.kehadiran.sakit} hari`],
-          ["Izin", `${studentRaport.kehadiran.izin} hari`],
-          ["Tanpa Keterangan (Alpa)", `${studentRaport.kehadiran.alpa} hari`]
-        ];
-
-        autoTable(doc, {
-          startY: currentY,
-          head: [["Ketidakhadiran", "Jumlah"]],
-          body: attRows,
-          theme: "grid",
-          margin: { left: 15, right: 120 },
-          headStyles: { fillColor: [71, 85, 105], textColor: 255, fontSize: 8, halign: "center" },
-          styles: { fontSize: 8, cellPadding: 1.5 }
-        });
-
-        // Catatan Wali Kelas Box
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "bold");
-        doc.text("Catatan Wali Kelas:", 95, currentY + 3);
-        doc.setFont("helvetica", "normal");
-        const splitCatatan = doc.splitTextToSize(studentRaport.catatanWaliKelas, 100);
-        doc.text(splitCatatan, 95, currentY + 8);
-
-        // Kenaikan Kelas jika Semester Genap
-        if (studentRaport.statusKenaikan) {
+          // Periode & Tahun
+          doc.setFontSize(12);
           doc.setFont("helvetica", "bold");
-          doc.text(`Keputusan: ${studentRaport.statusKenaikan.status} (${studentRaport.statusKenaikan.keKelas || ''})`, 95, currentY + 22);
+          doc.text(studentRaport.periodeNama.toUpperCase(), centerX, coverY, { align: "center" });
+          coverY += 6;
+          doc.setFontSize(10);
+          doc.setFont("helvetica", "normal");
+          doc.text(`Tahun Ajaran ${studentRaport.tahunAjaran}`, centerX, coverY, { align: "center" });
+
+          // Identitas Box
+          coverY += 25;
+          const boxX = 35;
+          const boxW = pageWidth - 70;
+          const boxH = 45;
+          doc.rect(boxX, coverY, boxW, boxH);
+
+          let idY = coverY + 10;
+          doc.setFontSize(9.5);
+          doc.setFont("helvetica", "bold");
+          doc.text("Nama Siswa", boxX + 8, idY);
+          doc.text(`:  ${student.nama.toUpperCase()}`, boxX + 45, idY);
+          idY += 7;
+          doc.setFont("helvetica", "normal");
+          doc.text("NISN / NIS", boxX + 8, idY);
+          doc.text(`:  ${student.nisn || "-"} / ${student.nis || "-"}`, boxX + 45, idY);
+          idY += 7;
+          doc.text("Kelas / Fase", boxX + 8, idY);
+          doc.text(`:  ${student.kelas} / ${studentRaport.fase}`, boxX + 45, idY);
+          idY += 7;
+          doc.text("Nama Sekolah", boxX + 8, idY);
+          doc.setFont("helvetica", "bold");
+          doc.text(`:  ${config.Nama_Sekolah || "SD NEGERI BABAKAN 04"}`, boxX + 45, idY);
+          idY += 7;
+          doc.setFont("helvetica", "normal");
+          doc.text("NPSN", boxX + 8, idY);
+          doc.text(`:  ${config.NPSN || "20200889"}`, boxX + 45, idY);
+
+          // Footer Cover
+          coverY = pageHeight - 35;
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "bold");
+          doc.text((config.Nama_Sekolah || "SD NEGERI BABAKAN 04").toUpperCase(), centerX, coverY, { align: "center" });
+          coverY += 4.5;
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "normal");
+          doc.text(config.Alamat_Sekolah || "Kp. Babakan Kulon RT.05/02 Desa Babakan Kec. Ciseeng Kab. Bogor", centerX, coverY, { align: "center" });
+
+          // If mode is 'full', add page for Lembar Nilai
+          if (printMode === "full") {
+            doc.addPage([215.9, 330.2], "portrait");
+          }
         }
 
-        // Tanda Tangan
-        const ttdY = currentY + 32;
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
+        // -------------------------------------------------------------
+        // RENDER LEMBAR NILAI (If printMode is 'full' or 'lembar_nilai')
+        // -------------------------------------------------------------
+        if (printMode === "full" || printMode === "lembar_nilai") {
+          let topY = 12;
 
-        if (showTtdKepsek) {
-          // 3 Kolom: Orang Tua (kiri: x=25), Kepala Sekolah (tengah: x=105), Guru Kelas (kanan: x=145)
-          doc.text("Mengetahui,", 25, ttdY);
-          doc.text("Orang Tua / Wali Siswa,", 25, ttdY + 4);
-          doc.text("( .................................... )", 25, ttdY + 22);
+          // Header Kop Dinas Resmi
+          if (showKopSekolah) {
+            if (config.Logo_Kiri) {
+              try {
+                doc.addImage(config.Logo_Kiri, "PNG", 14, 10, 16, 16);
+              } catch (e) {}
+            }
+            if (config.Logo_Kanan) {
+              try {
+                doc.addImage(config.Logo_Kanan, "PNG", pageWidth - 30, 10, 16, 16);
+              } catch (e) {}
+            }
 
-          doc.text("Mengetahui,", 105, ttdY, { align: "center" });
-          doc.text("Kepala Sekolah,", 105, ttdY + 4, { align: "center" });
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.text((config.Pemerintah || "PEMERINTAH KABUPATEN BOGOR").toUpperCase(), centerX, topY, { align: "center" });
+            doc.text((config.Dinas || "DINAS PENDIDIKAN").toUpperCase(), centerX, topY + 4.5, { align: "center" });
+            doc.setFontSize(13);
+            doc.text((config.Nama_Sekolah || "SD NEGERI BABAKAN 04").toUpperCase(), centerX, topY + 9.5, { align: "center" });
+            doc.setFontSize(7.5);
+            doc.setFont("helvetica", "normal");
+            const alamatFull = `${config.Alamat_Sekolah || "Kp. Babakan Kulon RT.05/02 Desa Babakan Kec. Ciseeng Kab. Bogor"}${config.NPSN ? ` • NPSN: ${config.NPSN}` : ""}${config.Email_Sekolah ? ` • Email: ${config.Email_Sekolah}` : ""}`;
+            doc.text(alamatFull, centerX, topY + 14, { align: "center" });
+
+            // Garis Ganda Kop Surat
+            doc.setLineWidth(0.6);
+            doc.line(14, topY + 17, pageWidth - 14, topY + 17);
+            doc.setLineWidth(0.2);
+            doc.line(14, topY + 18, pageWidth - 14, topY + 18);
+            topY += 22;
+          } else {
+            topY = 14;
+          }
+
+          // Raport Title
+          doc.setFontSize(11);
           doc.setFont("helvetica", "bold");
-          doc.text(studentRaport.namaKepsek || config.Nama_Kepala_Sekolah || "SUBUR, S.Pd.SD.", 105, ttdY + 20, { align: "center" });
+          doc.text("LAPORAN HASIL BELAJAR (RAPOR)", centerX, topY, { align: "center" });
+          doc.setFontSize(8.5);
           doc.setFont("helvetica", "normal");
-          doc.text(`NIP. ${studentRaport.nipKepsek || config.NIP_Kepala_Sekolah || "197002111993081001"}`, 105, ttdY + 24, { align: "center" });
+          doc.text(`Periode: ${studentRaport.periodeNama} | Tahun Ajaran: ${studentRaport.tahunAjaran}`, centerX, topY + 5, { align: "center" });
 
-          const tglFormatted = formatTanggalIndonesia(studentRaport.tanggalRaport || tanggalRaport);
-          const tempatTtd = studentRaport.tempatTitimangsa || tempatTitimangsa || config.Tempat_Tanda_Tangan || "Kab. Bogor";
+          // Identitas Siswa Header
+          let idHeaderY = topY + 11;
+          doc.setFontSize(8.5);
+          doc.text(`Nama Peserta Didik : ${student.nama}`, 14, idHeaderY);
+          doc.text(`NISN / NIS          : ${student.nisn || "-"} / ${student.nis || "-"}`, 14, idHeaderY + 4.5);
+          doc.text(`Kelas / Fase       : ${student.kelas} / ${studentRaport.fase}`, 135, idHeaderY);
+          doc.text(`Semester            : ${studentRaport.semester}`, 135, idHeaderY + 4.5);
 
-          doc.text(`${tempatTtd}, ${tglFormatted}`, 145, ttdY);
-          doc.text("Guru Kelas / Wali Kelas,", 145, ttdY + 4);
+          // Tabel Nilai
+          const mapelOrderLookup = new Map<string, number>(displayMapelNames.map((m, idx) => [m.toLowerCase(), idx]));
+          const filteredNilaiMapel = studentRaport.nilaiMapel
+            .filter((nm) => mapelOrderLookup.has(nm.mapel.toLowerCase()))
+            .sort((a, b) => {
+              const posA = mapelOrderLookup.get(a.mapel.toLowerCase()) ?? 999;
+              const posB = mapelOrderLookup.get(b.mapel.toLowerCase()) ?? 999;
+              return posA - posB;
+            });
+          const finalNilaiMapel = filteredNilaiMapel.length > 0 ? filteredNilaiMapel : studentRaport.nilaiMapel;
+
+          const tableBody = finalNilaiMapel.map((nm, i) => [
+            i + 1,
+            nm.mapel,
+            nm.nilaiAkhir,
+            nm.capaianKompetensiTinggi || nm.deskripsi || "-"
+          ]);
+
+          autoTable(doc, {
+            startY: idHeaderY + 9,
+            head: [["No", "Mata Pelajaran", "Nilai Akhir", "Capaian Kompetensi / Keterangan"]],
+            body: tableBody,
+            theme: "grid",
+            headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold", fontSize: 8, halign: "center" },
+            styles: { fontSize: 8, cellPadding: 1.8 },
+            columnStyles: {
+              0: { cellWidth: 10, halign: "center" },
+              1: { cellWidth: 55 },
+              2: { cellWidth: 20, halign: "center", fontStyle: "bold" },
+              3: { cellWidth: 102.9 }
+            }
+          });
+
+          let currentY = (doc as any).lastAutoTable.finalY + 5;
+
+          // B. Ekstrakurikuler Table
+          if (studentRaport.ekskul && studentRaport.ekskul.length > 0) {
+            const ekskulRows = studentRaport.ekskul.map((ek, i) => [
+              i + 1,
+              ek.nama,
+              ek.predikat,
+              ek.keterangan || "-"
+            ]);
+
+            doc.setFontSize(8.5);
+            doc.setFont("helvetica", "bold");
+            doc.text("B. Kegiatan Ekstrakurikuler", 14, currentY);
+
+            autoTable(doc, {
+              startY: currentY + 2,
+              head: [["No", "Kegiatan Ekstrakurikuler", "Predikat", "Keterangan"]],
+              body: ekskulRows,
+              theme: "grid",
+              headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold", fontSize: 8, halign: "center" },
+              styles: { fontSize: 8, cellPadding: 1.5 },
+              columnStyles: {
+                0: { cellWidth: 10, halign: "center" },
+                1: { cellWidth: 55 },
+                2: { cellWidth: 20, halign: "center", fontStyle: "bold" },
+                3: { cellWidth: 102.9 }
+              }
+            });
+
+            currentY = (doc as any).lastAutoTable.finalY + 5;
+          }
+
+          // C. Ketidakhadiran & Catatan
+          doc.setFontSize(8.5);
           doc.setFont("helvetica", "bold");
-          doc.text(studentRaport.namaGuruWali || currentUser.name || "Eri Iriana Rifai, S.Kom.", 145, ttdY + 20);
-          doc.setFont("helvetica", "normal");
-          doc.text(`NIP. ${studentRaport.nipGuruWali || "-"}`, 145, ttdY + 24);
-        } else {
-          // 2 Kolom Seimbang: Orang Tua (kiri: x=25), Guru Kelas (kanan: x=145)
-          const tglFormatted = formatTanggalIndonesia(studentRaport.tanggalRaport || tanggalRaport);
-          const tempatTtd = studentRaport.tempatTitimangsa || tempatTitimangsa || config.Tempat_Tanda_Tangan || "Kab. Bogor";
+          doc.text("C. Ketidakhadiran", 14, currentY);
 
-          doc.text("Mengetahui,", 25, ttdY);
-          doc.text("Orang Tua / Wali Siswa,", 25, ttdY + 4);
-          doc.text("( .................................... )", 25, ttdY + 22);
+          const attRows = [
+            ["Sakit (S)", `${studentRaport.kehadiran.sakit} hari`],
+            ["Izin (I)", `${studentRaport.kehadiran.izin} hari`],
+            ["Tanpa Keterangan (Alpa)", `${studentRaport.kehadiran.alpa} hari`]
+          ];
 
-          doc.text(`${tempatTtd}, ${tglFormatted}`, 145, ttdY);
-          doc.text("Guru Kelas / Wali Kelas,", 145, ttdY + 4);
+          autoTable(doc, {
+            startY: currentY + 2,
+            head: [["Ketidakhadiran", "Jumlah"]],
+            body: attRows,
+            theme: "grid",
+            margin: { left: 14, right: 115 },
+            headStyles: { fillColor: [71, 85, 105], textColor: 255, fontSize: 8, halign: "center" },
+            styles: { fontSize: 8, cellPadding: 1.5 }
+          });
+
+          // Catatan Wali Kelas Box
+          doc.setFontSize(8);
           doc.setFont("helvetica", "bold");
-          doc.text(studentRaport.namaGuruWali || currentUser.name || "Eri Iriana Rifai, S.Kom.", 145, ttdY + 20);
+          doc.text("D. Catatan Wali Kelas:", 115, currentY + 2);
           doc.setFont("helvetica", "normal");
-          doc.text(`NIP. ${studentRaport.nipGuruWali || "-"}`, 145, ttdY + 24);
+          const splitCatatan = doc.splitTextToSize(studentRaport.catatanWaliKelas, 86);
+          doc.text(splitCatatan, 115, currentY + 7);
+
+          // Kenaikan Kelas jika Semester Genap
+          if (studentRaport.statusKenaikan) {
+            doc.setFont("helvetica", "bold");
+            doc.text(`Keputusan: ${studentRaport.statusKenaikan.status} (${studentRaport.statusKenaikan.keKelas || ''})`, 115, currentY + 22);
+          }
+
+          // Tanda Tangan
+          const ttdY = Math.max((doc as any).lastAutoTable.finalY + 8, currentY + 26);
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "normal");
+
+          if (showTtdKepsek) {
+            doc.text("Mengetahui,", 25, ttdY);
+            doc.text("Orang Tua / Wali Siswa,", 25, ttdY + 4);
+            doc.text("( .................................... )", 25, ttdY + 20);
+
+            doc.text("Mengetahui,", centerX, ttdY, { align: "center" });
+            doc.text("Kepala Sekolah,", centerX, ttdY + 4, { align: "center" });
+            doc.setFont("helvetica", "bold");
+            doc.text(studentRaport.namaKepsek || config.Nama_Kepala_Sekolah || "SUBUR, S.Pd.SD.", centerX, ttdY + 18, { align: "center" });
+            doc.setFont("helvetica", "normal");
+            doc.text(`NIP. ${studentRaport.nipKepsek || config.NIP_Kepala_Sekolah || "197002111993081001"}`, centerX, ttdY + 22, { align: "center" });
+
+            const tglFormatted = formatTanggalIndonesia(studentRaport.tanggalRaport || tanggalRaport);
+            const tempatTtd = studentRaport.tempatTitimangsa || tempatTitimangsa || config.Tempat_Tanda_Tangan || "Kab. Bogor";
+
+            doc.text(`${tempatTtd}, ${tglFormatted}`, 150, ttdY);
+            doc.text("Guru Kelas / Wali Kelas,", 150, ttdY + 4);
+            doc.setFont("helvetica", "bold");
+            doc.text(studentRaport.namaGuruWali || currentUser.name || "Eri Iriana Rifai, S.Kom.", 150, ttdY + 18);
+            doc.setFont("helvetica", "normal");
+            doc.text(`NIP. ${studentRaport.nipGuruWali || "-"}`, 150, ttdY + 22);
+          } else {
+            const tglFormatted = formatTanggalIndonesia(studentRaport.tanggalRaport || tanggalRaport);
+            const tempatTtd = studentRaport.tempatTitimangsa || tempatTitimangsa || config.Tempat_Tanda_Tangan || "Kab. Bogor";
+
+            doc.text("Mengetahui,", 25, ttdY);
+            doc.text("Orang Tua / Wali Siswa,", 25, ttdY + 4);
+            doc.text("( .................................... )", 25, ttdY + 20);
+
+            doc.text(`${tempatTtd}, ${tglFormatted}`, 150, ttdY);
+            doc.text("Guru Kelas / Wali Kelas,", 150, ttdY + 4);
+            doc.setFont("helvetica", "bold");
+            doc.text(studentRaport.namaGuruWali || currentUser.name || "Eri Iriana Rifai, S.Kom.", 150, ttdY + 18);
+            doc.setFont("helvetica", "normal");
+            doc.text(`NIP. ${studentRaport.nipGuruWali || "-"}`, 150, ttdY + 22);
+          }
         }
       });
 
       const cleanName = selectedSiswaId === "all" ? `Semua_Siswa_${selectedKelas}` : targetStudents[0]?.nama.replace(/\s+/g, "_");
-      doc.save(`Raport_${cleanName}_${currentPeriodeInfo.short}_${selectedTahunAjaran.replace(/\//g, "-")}.pdf`);
-      notifyUnduhSuccess("Dokumen Raport PDF berhasil dibuat dan diunduh!");
+      doc.save(`Raport_F4_${cleanName}_${currentPeriodeInfo.short}_${selectedTahunAjaran.replace(/\//g, "-")}.pdf`);
+      notifyUnduhSuccess("Dokumen Raport PDF Ukuran F4 / Folio berhasil dibuat dan diunduh!");
     } catch (err: any) {
       notifyUnduhError("Gagal membuat PDF Raport: " + (err?.message || "Error"));
     }
@@ -2932,13 +3069,37 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                 return (
                   <div 
                     key={student.id} 
-                    className={`bg-white text-black p-8 sm:p-12 rounded-2xl shadow-md border border-slate-200 mx-auto max-w-[210mm] min-h-[297mm] print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none ${
+                    className={`bg-white text-black p-6 sm:p-10 rounded-2xl shadow-md border border-slate-200 mx-auto max-w-[215.9mm] min-h-[330mm] print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none print:min-h-0 ${
                       sIdx > 0 ? "print:break-before-page" : ""
                     }`}
                   >
+                    {/* Inject Print Styles for Official F4 / Folio Paper Size */}
+                    <style>{`
+                      @media print {
+                        @page {
+                          size: 215.9mm 330.2mm;
+                          margin: 8mm 10mm;
+                        }
+                        body {
+                          background-color: white !important;
+                          color: black !important;
+                          -webkit-print-color-adjust: exact !important;
+                          print-color-adjust: exact !important;
+                        }
+                        .print\\:break-after-page {
+                          page-break-after: always !important;
+                          break-after: page !important;
+                        }
+                        .print\\:break-before-page {
+                          page-break-before: always !important;
+                          break-before: page !important;
+                        }
+                      }
+                    `}</style>
+
                     {/* COVER PAGE (Rendered if mode is full or cover) */}
                     {(printMode === "full" || printMode === "cover") && (
-                      <div className="flex flex-col justify-between min-h-[260mm] border-4 border-double border-slate-800 p-8 text-center mb-8 print:mb-0 print:break-after-page">
+                      <div className="flex flex-col justify-between min-h-[305mm] border-4 border-double border-slate-800 p-8 text-center mb-8 print:mb-0 print:break-after-page">
                         {/* Top School Header */}
                         <div className="space-y-1.5">
                           <p className="text-xs font-bold uppercase tracking-widest text-slate-700">
