@@ -230,7 +230,7 @@ export function isGenericDummyDesc(text?: string | null): boolean {
   );
 }
 
-// Memeriksa apakah deskripsi tersimpan merupakan deskripsi lama 1 TP yang belum tergabung secara multi-TP
+// Memeriksa apakah deskripsi tersimpan merupakan deskripsi lama 1 TP yang belum tergabung secara multi-TP atau belum sesuai KKTP
 export function isOutdatedSingleTp(currentDesc: string | undefined | null, freshFullDesc: string): boolean {
   if (!currentDesc) return true;
   const cur = currentDesc.trim();
@@ -238,17 +238,28 @@ export function isOutdatedSingleTp(currentDesc: string | undefined | null, fresh
   if (cur === fresh) return false;
   if (isGenericDummyDesc(cur)) return true;
 
+  // Jika status ketuntasan fresh berbeda dari cur (misal fresh butuh "Perlu peningkatan..." tapi cur masih "Menunjukkan...")
+  if (fresh.startsWith("Perlu peningkatan konsistensi pemahaman dan pendampingan dalam") && !cur.startsWith("Perlu peningkatan konsistensi pemahaman dan pendampingan dalam")) {
+    return true;
+  }
+  if (fresh.startsWith("Menunjukkan penguasaan sangat baik dalam") && !cur.startsWith("Menunjukkan penguasaan sangat baik dalam")) {
+    return true;
+  }
+
   // Jika fresh description memiliki multiple TP yang digabungkan (" serta " atau koma), sedangkan cur belum
   if (fresh.includes(" serta ") && !cur.includes(" serta ")) return true;
   if ((fresh.match(/,/g) || []).length > (cur.match(/,/g) || []).length) return true;
 
-  // Jika format pembuka berbeda dari format standar ketuntasan Simple Multi-TP
+  // Jika masih menggunakan format lama "Menunjukkan kemauan belajar..."
+  if (cur.startsWith("Menunjukkan kemauan belajar")) return true;
+
+  // Format baku sesuai KKTP
   const isTargetFormat = cur.startsWith("Menunjukkan penguasaan sangat baik dalam") ||
-                        cur.startsWith("Menunjukkan kemauan belajar dan pemahaman dasar dalam");
+                        cur.startsWith("Perlu peningkatan konsistensi pemahaman dan pendampingan dalam");
   if (!isTargetFormat) return true;
 
-  // Jika panjang karakter fresh jauh lebih lengkap karena ada TP baru di Bank TP
-  if (fresh.length > cur.length + 15) return true;
+  // Jika isi TP di Bank TP berbeda dari yang tersimpan di cur
+  if (cur !== fresh) return true;
 
   return false;
 }
@@ -564,14 +575,23 @@ export function concatenateTpListNaturally(tps: string[], mapelFallback: string 
 }
 
 // Simple Multi-TP Auto-Concatenation & Logika Standar Ketuntasan (KKTP)
+// Jika Nilai >= KKTP (Tuntas / Sangat Baik) -> "Menunjukkan penguasaan sangat baik dalam [Daftar Seluruh TP dari Bank TP Kelas]."
+// Jika Nilai < KKTP (Belum Tuntas / Perlu Pendampingan) -> "Perlu peningkatan konsistensi pemahaman dan pendampingan dalam [Daftar Seluruh TP dari Bank TP Kelas]."
 export function generateFallbackDeskripsiFromTp(
   mapel: string,
-  nilaiNum: number,
+  nilaiNum: number | string | undefined | null,
   tps?: string[],
   bankItems?: BankTpItem[],
   kelas?: string,
-  kktpThreshold: number = 75
+  kktpThreshold: number | string = 75
 ): { tinggi: string; perluBimbingan: string } {
+  const scoreVal = (nilaiNum !== undefined && nilaiNum !== null && nilaiNum !== "" && !isNaN(Number(nilaiNum)))
+    ? Number(nilaiNum)
+    : 80;
+  const kktpVal = (kktpThreshold !== undefined && kktpThreshold !== null && kktpThreshold !== "" && !isNaN(Number(kktpThreshold)))
+    ? Number(kktpThreshold)
+    : 75;
+
   let candidateTps: string[] = [];
 
   // 1. Ambil seluruh TP yang ada di Bank TP untuk Mapel & Kelas tersebut (Tanpa Kategori)
@@ -592,21 +612,23 @@ export function generateFallbackDeskripsiFromTp(
   // Penggabungan Seluruh TP secara Alami (Smart Concatenation)
   const mergedTpsText = concatenateTpListNaturally(candidateTps, mapel);
 
-  // 3. Logika Deskripsi Rapor Berdasarkan Standar Ketuntasan (KKTP misal = 75)
-  if (nilaiNum >= kktpThreshold) {
+  // 3. Logika Deskripsi Rapor Berdasarkan Standar Ketuntasan (KKTP)
+  if (scoreVal >= kktpVal) {
+    const textTuntas = `Menunjukkan penguasaan sangat baik dalam ${mergedTpsText}.`;
     return {
-      tinggi: `Menunjukkan penguasaan sangat baik dalam ${mergedTpsText}.`,
+      tinggi: textTuntas,
       perluBimbingan: `Pertahankan prestasi dan tingkatkan kemandirian dalam pendalaman ${mergedTpsText}.`
     };
   } else {
+    const textBelumTuntas = `Perlu peningkatan konsistensi pemahaman dan pendampingan dalam ${mergedTpsText}.`;
     return {
-      tinggi: `Menunjukkan kemauan belajar dan pemahaman dasar dalam ${mergedTpsText}.`,
-      perluBimbingan: `Perlu peningkatan konsistensi pemahaman dan pendampingan dalam ${mergedTpsText}.`
+      tinggi: textBelumTuntas,
+      perluBimbingan: textBelumTuntas
     };
   }
 }
 
-export function generateDefaultDeskripsi(mapel: string, nilaiNum: number, kelas?: string): { tinggi: string; perluBimbingan: string } {
+export function generateDefaultDeskripsi(mapel: string, nilaiNum: number | string, kelas?: string): { tinggi: string; perluBimbingan: string } {
   return generateFallbackDeskripsiFromTp(mapel, nilaiNum, [], undefined, kelas);
 }
 
@@ -1534,7 +1556,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
             const studentItem = classStudents.find((st) => st.id === s.id);
             const sKelas = studentItem?.kelas || selectedKelas;
             const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, activeTpMapel) && isMatchingClass(b.kelas, sKelas));
-            const fb = generateFallbackDeskripsiFromTp(activeTpMapel, s.nilai, currentTps, mapelBankItems, sKelas);
+            const fb = generateFallbackDeskripsiFromTp(activeTpMapel, s.nilai, currentTps, mapelBankItems, sKelas, 75);
             return {
               id: s.id,
               capaianTinggi: fb.tinggi,
@@ -1610,7 +1632,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
 
         if (!resTinggi) {
           const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, activeTpMapel) && isMatchingClass(b.kelas, targetStudent.kelas));
-          const fb = generateFallbackDeskripsiFromTp(activeTpMapel, score, currentTps, mapelBankItems, targetStudent.kelas);
+          const fb = generateFallbackDeskripsiFromTp(activeTpMapel, score, currentTps, mapelBankItems, targetStudent.kelas, 75);
           resTinggi = fb.tinggi;
           resBimbingan = fb.perluBimbingan;
         }
@@ -1687,7 +1709,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
 
     if (!tinggi) {
       const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, mapelName) && isMatchingClass(b.kelas, student.kelas));
-      const fb = generateFallbackDeskripsiFromTp(mapelName, currentScore, tps, mapelBankItems, student.kelas);
+      const fb = generateFallbackDeskripsiFromTp(mapelName, currentScore, tps, mapelBankItems, student.kelas, 75);
       tinggi = fb.tinggi;
       bimbingan = fb.perluBimbingan;
     }
@@ -1773,21 +1795,29 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
       if (!record || !Array.isArray(record.nilaiMapel)) return record;
       let hasChanges = false;
       const updatedNilaiMapel = record.nilaiMapel.map((nm) => {
-        const scoreVal = typeof nm.nilaiAkhir === "number" ? nm.nilaiAkhir : 80;
+        const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
+        const scoreVal = !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80;
         const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, nm.mapel) && isMatchingClass(b.kelas, siswa.kelas));
         const currentTps = effectiveTpBank[nm.mapel] || getFallbackTpsForClassAndMapel(siswa.kelas, nm.mapel);
-        const desc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems, siswa.kelas);
+        const desc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems, siswa.kelas, kktpVal);
 
-        const currentTinggi = nm.capaianKompetensiTinggi || nm.deskripsi;
-        const currentBimbingan = nm.capaianKompetensiPerluBimbingan;
+        const currentTinggi = (nm.capaianKompetensiTinggi || nm.deskripsi || "").trim();
+        const currentBimbingan = (nm.capaianKompetensiPerluBimbingan || "").trim();
 
-        const needsTinggi = shouldRefreshDeskripsi(currentTinggi, desc.tinggi, mapelBankItems?.length || 0);
+        const isTuntas = scoreVal >= kktpVal;
+        const isMismatchWithScore = isTuntas
+          ? !currentTinggi.startsWith("Menunjukkan penguasaan sangat baik dalam")
+          : !currentTinggi.startsWith("Perlu peningkatan konsistensi pemahaman dan pendampingan dalam");
+
+        const needsTinggi = isMismatchWithScore || shouldRefreshDeskripsi(currentTinggi, desc.tinggi, mapelBankItems?.length || 0);
         const needsBimbingan = shouldRefreshDeskripsi(currentBimbingan, desc.perluBimbingan, mapelBankItems?.length || 0);
 
         if (needsTinggi || needsBimbingan) {
           hasChanges = true;
           return {
             ...nm,
+            nilaiAkhir: scoreVal,
+            kktp: kktpVal,
             capaianKompetensiTinggi: needsTinggi ? desc.tinggi : (currentTinggi || desc.tinggi),
             capaianKompetensiPerluBimbingan: needsBimbingan ? desc.perluBimbingan : (currentBimbingan || desc.perluBimbingan),
             deskripsi: needsTinggi ? desc.tinggi : (nm.deskripsi || desc.tinggi)
@@ -1873,7 +1903,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
       // Check if we have Bank TP for this mapel & class (Solusi B)
       const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, mapel) && isMatchingClass(b.kelas, siswa.kelas));
       const availableTps = effectiveTpBank[mapel] || getFallbackTpsForClassAndMapel(siswa.kelas, mapel);
-      const desc = generateFallbackDeskripsiFromTp(mapel, finalVal, availableTps, mapelBankItems, siswa.kelas);
+      const desc = generateFallbackDeskripsiFromTp(mapel, finalVal, availableTps, mapelBankItems, siswa.kelas, 75);
 
       return {
         mapel,
@@ -2043,10 +2073,11 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
         classStudents.forEach((student) => {
           const currentRec = getRaportForStudent(student);
           const updatedNilaiMapel = currentRec.nilaiMapel.map((nm) => {
-            const scoreVal = typeof nm.nilaiAkhir === "number" ? nm.nilaiAkhir : 80;
+            const scoreVal = !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80;
+            const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
             const currentTps = effectiveTpBank[nm.mapel] || getFallbackTpsForClassAndMapel(student.kelas, nm.mapel);
             const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, nm.mapel) && isMatchingClass(b.kelas, student.kelas));
-            const desc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems, student.kelas);
+            const desc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems, student.kelas, kktpVal);
 
             return {
               ...nm,
@@ -2597,13 +2628,27 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
         const padMapel = isTight ? 1.0 : 1.2;
 
         const tableBody = finalNilaiMapel.map((nm, i) => {
-          const descTinggi = nm.capaianKompetensiTinggi || nm.deskripsi || "-";
-          const descBimbingan = nm.capaianKompetensiPerluBimbingan ? `\n* ${nm.capaianKompetensiPerluBimbingan}` : "";
+          const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
+          const scoreVal = !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80;
+          const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, nm.mapel) && isMatchingClass(b.kelas, student.kelas));
+          const currentTps = effectiveTpBank[nm.mapel] || getFallbackTpsForClassAndMapel(student.kelas, nm.mapel);
+          const freshDesc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems, student.kelas, kktpVal);
+
+          const isTuntas = scoreVal >= kktpVal;
+          const currentTinggi = (nm.capaianKompetensiTinggi || nm.deskripsi || "").trim();
+          const isMismatchWithScore = isTuntas
+            ? !currentTinggi.startsWith("Menunjukkan penguasaan sangat baik dalam")
+            : !currentTinggi.startsWith("Perlu peningkatan konsistensi pemahaman dan pendampingan dalam");
+
+          const displayText = (isMismatchWithScore || shouldRefreshDeskripsi(currentTinggi, freshDesc.tinggi, mapelBankItems?.length || 0))
+            ? freshDesc.tinggi
+            : (currentTinggi || freshDesc.tinggi);
+
           return [
             i + 1,
             nm.mapel,
-            nm.nilaiAkhir,
-            `${descTinggi}${descBimbingan}`
+            scoreVal,
+            displayText
           ];
         });
 
@@ -3544,21 +3589,38 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                         return orderA - orderB;
                                       });
                                     const toRender = filtered.length > 0 ? filtered : studentRaport.nilaiMapel;
-                                    return toRender.map((nm, idx) => (
-                                      <tr key={idx} className="border-b border-black hover:bg-slate-50/50">
-                                        <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-center font-semibold">{idx + 1}</td>
-                                        <td className="p-1.5 print:py-0.5 print:px-1 border border-black font-semibold text-slate-900">{nm.mapel}</td>
-                                        <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-center font-bold text-slate-900">{nm.nilaiAkhir}</td>
-                                        <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-[10.5px] print:text-[8.8px] leading-snug text-slate-800">
-                                          <p>{nm.capaianKompetensiTinggi || nm.deskripsi}</p>
-                                          {nm.capaianKompetensiPerluBimbingan && (
-                                            <p className="mt-0.5 text-slate-600 italic">
-                                              * {nm.capaianKompetensiPerluBimbingan}
-                                            </p>
-                                          )}
-                                        </td>
-                                      </tr>
-                                    ));
+                                    return toRender.map((nm, idx) => {
+                                      const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
+                                      const scoreVal = !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80;
+                                      const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, nm.mapel) && isMatchingClass(b.kelas, student.kelas));
+                                      const currentTps = effectiveTpBank[nm.mapel] || getFallbackTpsForClassAndMapel(student.kelas, nm.mapel);
+                                      const freshDesc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems, student.kelas, kktpVal);
+
+                                      const isTuntas = scoreVal >= kktpVal;
+                                      const currentTinggi = (nm.capaianKompetensiTinggi || nm.deskripsi || "").trim();
+                                      const isMismatchWithScore = isTuntas
+                                        ? !currentTinggi.startsWith("Menunjukkan penguasaan sangat baik dalam")
+                                        : !currentTinggi.startsWith("Perlu peningkatan konsistensi pemahaman dan pendampingan dalam");
+
+                                      const displayText = (isMismatchWithScore || shouldRefreshDeskripsi(currentTinggi, freshDesc.tinggi, mapelBankItems?.length || 0))
+                                        ? freshDesc.tinggi
+                                        : (currentTinggi || freshDesc.tinggi);
+
+                                      return (
+                                        <tr key={idx} className="border-b border-black hover:bg-slate-50/50">
+                                          <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-center font-semibold">{idx + 1}</td>
+                                          <td className="p-1.5 print:py-0.5 print:px-1 border border-black font-semibold text-slate-900">{nm.mapel}</td>
+                                          <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-center font-bold text-slate-900">
+                                            <span className={scoreVal < kktpVal ? "text-amber-700 dark:text-amber-400 font-extrabold" : "text-slate-900"}>
+                                              {scoreVal}
+                                            </span>
+                                          </td>
+                                          <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-[10.5px] print:text-[8.8px] leading-snug text-slate-800">
+                                            <p>{displayText}</p>
+                                          </td>
+                                        </tr>
+                                      );
+                                    });
                                   })()}
                                 </tbody>
                               </table>
@@ -3911,7 +3973,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                             
                             const nm = mOriginalIdx !== -1 
                               ? studentRaport.nilaiMapel[mOriginalIdx] 
-                              : { mapel: mName, nilaiAkhir: 80, capaianKompetensiTinggi: "", capaianKompetensiPerluBimbingan: "", deskripsi: "" };
+                              : { mapel: mName, kktp: 75, nilaiAkhir: 80, capaianKompetensiTinggi: "", capaianKompetensiPerluBimbingan: "", deskripsi: "" };
 
                             const currentTps = effectiveTpBank[mName] || DEFAULT_TP_TEMPLATES[mName] || [];
 
@@ -3934,17 +3996,17 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                       let currentTinggi = nm.capaianKompetensiTinggi || nm.deskripsi || "";
                                       let currentBimbingan = nm.capaianKompetensiPerluBimbingan || "";
 
+                                      const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
                                       const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, mName) && isMatchingClass(b.kelas, s.kelas));
-                                      const desc = generateFallbackDeskripsiFromTp(mName, clampedVal, currentTps, mapelBankItems, s.kelas);
-                                      if (autoSyncTpWithNilai || shouldRefreshDeskripsi(currentTinggi, desc.tinggi, mapelBankItems?.length || 0)) {
-                                        currentTinggi = desc.tinggi;
-                                        currentBimbingan = desc.perluBimbingan;
-                                      }
+                                      const desc = generateFallbackDeskripsiFromTp(mName, clampedVal, currentTps, mapelBankItems, s.kelas, kktpVal);
+                                      currentTinggi = desc.tinggi;
+                                      currentBimbingan = desc.perluBimbingan;
 
                                       updatedNilaiMapel[targetIdx] = {
                                         ...nm,
                                         mapel: mName,
                                         nilaiAkhir: clampedVal,
+                                        kktp: kktpVal,
                                         capaianKompetensiTinggi: currentTinggi,
                                         capaianKompetensiPerluBimbingan: currentBimbingan,
                                         deskripsi: currentTinggi
@@ -3968,7 +4030,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                         isOpen: true,
                                         studentId: s.id,
                                         studentName: s.nama,
-                                        studentNilai: typeof nm.nilaiAkhir === "number" ? nm.nilaiAkhir : 80,
+                                        studentNilai: !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80,
                                         mapel: mName,
                                         targetIdx,
                                         targetField: "tinggi"
@@ -3983,14 +4045,17 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const scoreVal = typeof nm.nilaiAkhir === "number" ? nm.nilaiAkhir : 80;
+                                      const scoreVal = !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80;
+                                      const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
                                       const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, mName) && isMatchingClass(b.kelas, s.kelas));
-                                      const desc = generateFallbackDeskripsiFromTp(mName, scoreVal, currentTps, mapelBankItems, s.kelas);
+                                      const desc = generateFallbackDeskripsiFromTp(mName, scoreVal, currentTps, mapelBankItems, s.kelas, kktpVal);
                                       const targetIdx = mOriginalIdx !== -1 ? mOriginalIdx : studentRaport.nilaiMapel.length;
                                       const updatedNilaiMapel = [...studentRaport.nilaiMapel];
                                       updatedNilaiMapel[targetIdx] = {
                                         ...nm,
                                         mapel: mName,
+                                        nilaiAkhir: scoreVal,
+                                        kktp: kktpVal,
                                         capaianKompetensiTinggi: desc.tinggi,
                                         capaianKompetensiPerluBimbingan: desc.perluBimbingan,
                                         deskripsi: desc.tinggi
@@ -4017,17 +4082,25 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                 </div>
 
                                 {(() => {
-                                  const cellScoreVal = typeof nm.nilaiAkhir === "number" ? nm.nilaiAkhir : 80;
+                                  const cellScoreVal = !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80;
+                                  const cellKktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
                                   const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, mName) && isMatchingClass(b.kelas, s.kelas));
                                   const freshDesc = generateFallbackDeskripsiFromTp(
                                     mName,
                                     cellScoreVal,
                                     currentTps,
                                     mapelBankItems,
-                                    s.kelas
+                                    s.kelas,
+                                    cellKktpVal
                                   );
 
-                                  const needsTinggi = shouldRefreshDeskripsi(nm.capaianKompetensiTinggi || nm.deskripsi, freshDesc.tinggi, mapelBankItems?.length || 0);
+                                  const isTuntas = cellScoreVal >= cellKktpVal;
+                                  const currentTinggiVal = (nm.capaianKompetensiTinggi || nm.deskripsi || "").trim();
+                                  const isMismatchWithScore = isTuntas
+                                    ? !currentTinggiVal.startsWith("Menunjukkan penguasaan sangat baik dalam")
+                                    : !currentTinggiVal.startsWith("Perlu peningkatan konsistensi pemahaman dan pendampingan dalam");
+
+                                  const needsTinggi = isMismatchWithScore || shouldRefreshDeskripsi(currentTinggiVal, freshDesc.tinggi, mapelBankItems?.length || 0);
                                   const needsBimbingan = shouldRefreshDeskripsi(nm.capaianKompetensiPerluBimbingan, freshDesc.perluBimbingan, mapelBankItems?.length || 0);
 
                                   const displayTinggi = needsTinggi
@@ -4382,23 +4455,17 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                       const clampedVal = isNaN(val) ? 0 : Math.min(100, Math.max(0, val));
                                       const updatedNilaiMapel = [...studentRaport.nilaiMapel];
 
-                                      let currentTinggi = nm.capaianKompetensiTinggi || nm.deskripsi || "";
-                                      let currentBimbingan = nm.capaianKompetensiPerluBimbingan || "";
-
-                                      // Otomatis menyesuaikan TP sesuai nilai yang diinput
-                                      if (autoSyncTpWithNilai || !currentTinggi || isGenericDummyDesc(currentTinggi)) {
-                                        const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, nm.mapel) && isMatchingClass(b.kelas, s.kelas));
-                                        const desc = generateFallbackDeskripsiFromTp(nm.mapel, clampedVal, currentTps, mapelBankItems, s.kelas);
-                                        currentTinggi = desc.tinggi;
-                                        currentBimbingan = desc.perluBimbingan;
-                                      }
+                                      const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
+                                      const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, nm.mapel) && isMatchingClass(b.kelas, s.kelas));
+                                      const desc = generateFallbackDeskripsiFromTp(nm.mapel, clampedVal, currentTps, mapelBankItems, s.kelas, kktpVal);
 
                                       updatedNilaiMapel[mIdx] = {
                                         ...nm,
                                         nilaiAkhir: clampedVal,
-                                        capaianKompetensiTinggi: currentTinggi,
-                                        capaianKompetensiPerluBimbingan: currentBimbingan,
-                                        deskripsi: currentTinggi
+                                        kktp: kktpVal,
+                                        capaianKompetensiTinggi: desc.tinggi,
+                                        capaianKompetensiPerluBimbingan: desc.perluBimbingan,
+                                        deskripsi: desc.tinggi
                                       };
                                       handleUpdateRaportRecord({
                                         ...studentRaport,
@@ -4420,7 +4487,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                         isOpen: true,
                                         studentId: s.id,
                                         studentName: s.nama,
-                                        studentNilai: typeof nm.nilaiAkhir === "number" ? nm.nilaiAkhir : 80,
+                                        studentNilai: !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80,
                                         mapel: nm.mapel,
                                         targetIdx: mIdx,
                                         targetField: "tinggi"
@@ -4436,12 +4503,15 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const scoreVal = typeof nm.nilaiAkhir === "number" ? nm.nilaiAkhir : 80;
+                                      const scoreVal = !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80;
+                                      const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
                                       const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, nm.mapel) && isMatchingClass(b.kelas, s.kelas));
-                                      const desc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems, s.kelas);
+                                      const desc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems, s.kelas, kktpVal);
                                       const updatedNilaiMapel = [...studentRaport.nilaiMapel];
                                       updatedNilaiMapel[mIdx] = {
                                         ...nm,
+                                        nilaiAkhir: scoreVal,
+                                        kktp: kktpVal,
                                         capaianKompetensiTinggi: desc.tinggi,
                                         capaianKompetensiPerluBimbingan: desc.perluBimbingan,
                                         deskripsi: desc.tinggi
@@ -5577,7 +5647,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                   const score = tpPickerState.studentNilai ?? 80;
                   const mapelTps = effectiveTpBank[tpPickerState.mapel] || DEFAULT_TP_TEMPLATES[tpPickerState.mapel] || [];
                   const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, tpPickerState.mapel) && isMatchingClass(b.kelas, student.kelas));
-                  const desc = generateFallbackDeskripsiFromTp(tpPickerState.mapel, score, mapelTps, mapelBankItems, student.kelas);
+                  const desc = generateFallbackDeskripsiFromTp(tpPickerState.mapel, score, mapelTps, mapelBankItems, student.kelas, 75);
                   
                   const currentRec = getRaportForStudent(student);
                   const updatedNilai = [...currentRec.nilaiMapel];
@@ -5682,11 +5752,10 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
 
                     if (targetIdx === -1) return;
 
+                    const cleanedSingle = cleanTpText(tpText, tpPickerState.mapel);
                     const formattedPhrase = tpPickerState.targetField === "tinggi"
-                      ? (tpText.toLowerCase().startsWith("memahami") || tpText.toLowerCase().startsWith("mampu")
-                          ? `Menunjukkan penguasaan sangat baik dalam ${tpText.charAt(0).toLowerCase() + tpText.slice(1)}.`
-                          : `Menunjukkan penguasaan optimal dalam ${tpText}.`)
-                      : `Perlu peningkatan dan pendampingan lebih intensif dalam ${tpText.charAt(0).toLowerCase() + tpText.slice(1)}.`;
+                      ? `Menunjukkan penguasaan sangat baik dalam ${cleanedSingle}.`
+                      : `Perlu peningkatan konsistensi pemahaman dan pendampingan dalam ${cleanedSingle}.`;
 
                     const currentFieldVal = tpPickerState.targetField === "tinggi"
                       ? (updatedNilai[targetIdx].capaianKompetensiTinggi || "")

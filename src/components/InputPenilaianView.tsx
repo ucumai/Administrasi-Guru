@@ -362,13 +362,14 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
               ? mapelBankItems.map((b) => b.tujuanPembelajaran).filter(Boolean)
               : availableTps.map((t) => t.text).filter(Boolean);
 
-            const scoreNum = typeof gradeVal === "number" ? gradeVal : 80;
+            const scoreNum = !isNaN(Number(gradeVal)) ? Number(gradeVal) : 80;
             const fullDescObj = generateFallbackDeskripsiFromTp(
               mapelToSave,
               scoreNum,
               allTpTexts,
               mapelBankItems,
-              selectedKelas
+              selectedKelas,
+              75
             );
 
             const finalDescTinggi = customDescMap[s.id] || fullDescObj.tinggi;
@@ -502,13 +503,14 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
             ? mapelBankItems.map((b) => b.tujuanPembelajaran).filter(Boolean)
             : availableTps.map((t) => t.text).filter(Boolean);
 
-          const scoreNum = typeof gradeVal === "number" ? gradeVal : 80;
+          const scoreNum = !isNaN(Number(gradeVal)) ? Number(gradeVal) : 80;
           const fullDescObj = generateFallbackDeskripsiFromTp(
             mapelToSave,
             scoreNum,
             allTpTexts,
             mapelBankItems,
-            selectedKelas
+            selectedKelas,
+            75
           );
 
           const finalDescTinggi = customDescMap[s.id] || fullDescObj.tinggi;
