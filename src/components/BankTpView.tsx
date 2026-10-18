@@ -18,7 +18,9 @@ import {
   RefreshCw,
   FolderPlus,
   ChevronRight,
-  Database
+  Database,
+  Table,
+  LayoutGrid
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import Swal from "sweetalert2";
@@ -35,8 +37,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Ganjil",
     kodeTp: "TP 1.1",
     materiPokok: "Bilangan Cacah & Operasi Hitung",
-    tujuanPembelajaran: "Memahami dan menyelesaikan operasi hitung penjumlahan, pengurangan, perkalian, dan pembagian bilangan cacah.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Memahami dan menyelesaikan operasi hitung penjumlahan, pengurangan, perkalian, dan pembagian bilangan cacah."
   },
   {
     mapel: "Matematika",
@@ -45,8 +46,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Ganjil",
     kodeTp: "TP 1.2",
     materiPokok: "Pecahan Sederhana",
-    tujuanPembelajaran: "Menyelesaikan masalah kontekstual yang berkaitan dengan pecahan senilai dan operasi aritmatika pecahan.",
-    kategori: "Sedang"
+    tujuanPembelajaran: "Menyelesaikan masalah kontekstual yang berkaitan dengan pecahan senilai dan operasi aritmatika pecahan."
   },
   {
     mapel: "Matematika",
@@ -55,8 +55,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Genap",
     kodeTp: "TP 2.1",
     materiPokok: "Pengukuran Panjang, Luas & Keliling",
-    tujuanPembelajaran: "Mengukur, menghitung keliling dan luas bangun datar menggunakan satuan baku dengan cermat.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Mengukur, menghitung keliling dan luas bangun datar menggunakan satuan baku dengan cermat."
   },
   {
     mapel: "Matematika",
@@ -65,8 +64,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Genap",
     kodeTp: "TP 2.2",
     materiPokok: "Analisis & Penyajian Data",
-    tujuanPembelajaran: "Menganalisis, menyajikan, dan menginterpretasikan data dalam bentuk diagram batang, tabel frekuensi, dan piktogram.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Menganalisis, menyajikan, dan menginterpretasikan data dalam bentuk diagram batang, tabel frekuensi, dan piktogram."
   },
 
   // Bahasa Indonesia
@@ -77,8 +75,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Ganjil",
     kodeTp: "TP 1.1",
     materiPokok: "Menyimak & Ide Pokok Teks",
-    tujuanPembelajaran: "Menyimak, menganalisis, dan menemukan ide pokok serta gagasan pendukung dalam berbagai teks informasi dan fiksi.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Menyimak, menganalisis, dan menemukan ide pokok serta gagasan pendukung dalam berbagai teks informasi dan fiksi."
   },
   {
     mapel: "Bahasa Indonesia",
@@ -87,8 +84,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Ganjil",
     kodeTp: "TP 1.2",
     materiPokok: "Diskusi & Komunikasi Lisan",
-    tujuanPembelajaran: "Menyampaikan pendapat, sanggahan, dan hasil telaah secara runtut, logis, dan santun dalam interaksi diskusi kelas.",
-    kategori: "Sedang"
+    tujuanPembelajaran: "Menyampaikan pendapat, sanggahan, dan hasil telaah secara runtut, logis, dan santun dalam interaksi diskusi kelas."
   },
   {
     mapel: "Bahasa Indonesia",
@@ -97,8 +93,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Genap",
     kodeTp: "TP 2.1",
     materiPokok: "Menulis Teks Narasi & Deskripsi",
-    tujuanPembelajaran: "Menulis teks deskripsi dan narasi menggunakan kosa kata baku, konjungsi, serta kaidah tanda baca yang tepat.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Menulis teks deskripsi dan narasi menggunakan kosa kata baku, konjungsi, serta kaidah tanda baca yang tepat."
   },
   {
     mapel: "Bahasa Indonesia",
@@ -107,8 +102,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Genap",
     kodeTp: "TP 2.2",
     materiPokok: "Membaca Indah & Presentasi",
-    tujuanPembelajaran: "Membaca teks informasi dan karya sastra dengan intonasi, ekspresi, dan artikulasi yang jelas serta percaya diri.",
-    kategori: "Umum"
+    tujuanPembelajaran: "Membaca teks informasi dan karya sastra dengan intonasi, ekspresi, dan artikulasi yang jelas serta percaya diri."
   },
 
   // IPAS
@@ -119,8 +113,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Ganjil",
     kodeTp: "TP 1.1",
     materiPokok: "Bagian Tubuh Tumbuhan & Hewan",
-    tujuanPembelajaran: "Menganalisis hubungan antara bentuk serta fungsi bagian tubuh tumbuhan dan adaptasi hewan terhadap lingkungannya.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Menganalisis hubungan antara bentuk serta fungsi bagian tubuh tumbuhan dan adaptasi hewan terhadap lingkungannya."
   },
   {
     mapel: "Ilmu Pengetahuan Alam dan Sosial (IPAS)",
@@ -129,8 +122,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Ganjil",
     kodeTp: "TP 1.2",
     materiPokok: "Wujud Zat & Perubahan Energi",
-    tujuanPembelajaran: "Mengidentifikasi wujud zat, sifat materi, dan transformasi bentuk energi dalam kehidupan sehari-hari.",
-    kategori: "Sedang"
+    tujuanPembelajaran: "Mengidentifikasi wujud zat, sifat materi, dan transformasi bentuk energi dalam kehidupan sehari-hari."
   },
   {
     mapel: "Ilmu Pengetahuan Alam dan Sosial (IPAS)",
@@ -139,8 +131,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Genap",
     kodeTp: "TP 2.1",
     materiPokok: "Bentang Alam & Keanekaragaman Hayati",
-    tujuanPembelajaran: "Menjelaskan keragaman bentang alam, kekayaan hayati, serta dampak interaksi manusia terhadap kelestarian lingkungan.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Menjelaskan keragaman bentang alam, kekayaan hayati, serta dampak interaksi manusia terhadap kelestarian lingkungan."
   },
   {
     mapel: "Ilmu Pengetahuan Alam dan Sosial (IPAS)",
@@ -149,8 +140,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Genap",
     kodeTp: "TP 2.2",
     materiPokok: "Kearifan Lokal & Kegiatan Ekonomi",
-    tujuanPembelajaran: "Mengenal kearifan lokal daerah setempat dan menganalisis peran kegiatan ekonomi dalam pemenuhan kebutuhan masyarakat.",
-    kategori: "Umum"
+    tujuanPembelajaran: "Mengenal kearifan lokal daerah setempat dan menganalisis peran kegiatan ekonomi dalam pemenuhan kebutuhan masyarakat."
   },
 
   // Pendidikan Pancasila
@@ -161,8 +151,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Ganjil",
     kodeTp: "TP 1.1",
     materiPokok: "Nilai-Nilai Sila Pancasila",
-    tujuanPembelajaran: "Menerapkan nilai-nilai luhur Pancasila dalam interaksi keseharian di lingkungan keluarga, sekolah, dan masyarakat.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Menerapkan nilai-nilai luhur Pancasila dalam interaksi keseharian di lingkungan keluarga, sekolah, dan masyarakat."
   },
   {
     mapel: "Pendidikan Pancasila",
@@ -171,8 +160,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Ganjil",
     kodeTp: "TP 1.2",
     materiPokok: "Bhinneka Tunggal Ika & Keberagaman",
-    tujuanPembelajaran: "Menghargai keragaman suku, agama, bahasa, dan budaya dalam bingkai persatuan Negara Kesatuan Republik Indonesia.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Menghargai keragaman suku, agama, bahasa, dan budaya dalam bingkai persatuan Negara Kesatuan Republik Indonesia."
   },
   {
     mapel: "Pendidikan Pancasila",
@@ -181,8 +169,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Genap",
     kodeTp: "TP 2.1",
     materiPokok: "Hak dan Kewajiban Warga Negara",
-    tujuanPembelajaran: "Melaksanakan hak dan kewajiban sebagai peserta didik dan warga masyarakat dengan penuh disiplin dan tanggung jawab.",
-    kategori: "Sedang"
+    tujuanPembelajaran: "Melaksanakan hak dan kewajiban sebagai peserta didik dan warga masyarakat dengan penuh disiplin dan tanggung jawab."
   },
   {
     mapel: "Pendidikan Pancasila",
@@ -191,8 +178,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Genap",
     kodeTp: "TP 2.2",
     materiPokok: "Norma & Musyawarah Mufakat",
-    tujuanPembelajaran: "Menunjukkan sikap patuh terhadap norma sosial dan mengutamakan musyawarah untuk mencapai mufakat dalam memecahkan masalah.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Menunjukkan sikap patuh terhadap norma sosial dan mengutamakan musyawarah untuk mencapai mufakat dalam memecahkan masalah."
   },
 
   // Pendidikan Agama dan Budi Pekerti
@@ -203,8 +189,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Ganjil",
     kodeTp: "TP 1.1",
     materiPokok: "Kitab Suci & Pemahaman Ayat",
-    tujuanPembelajaran: "Membaca, menghafal, dan memahami makna ayat-ayat suci serta teladan nilai kebaikan dalam kehidupan sehari-hari.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Membaca, menghafal, dan memahami makna ayat-ayat suci serta teladan nilai kebaikan dalam kehidupan sehari-hari."
   },
   {
     mapel: "Pendidikan Agama dan Budi Pekerti",
@@ -213,8 +198,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Genap",
     kodeTp: "TP 2.1",
     materiPokok: "Praktik Ibadah & Akhlak Mulia",
-    tujuanPembelajaran: "Mempraktikkan tata cara ibadah dengan tertib serta menunjukkan akhlak terpuji, toleransi, dan kasih sayang terhadap sesama.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Mempraktikkan tata cara ibadah dengan tertib serta menunjukkan akhlak terpuji, toleransi, dan kasih sayang terhadap sesama."
   },
 
   // PJOK
@@ -225,8 +209,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Ganjil",
     kodeTp: "TP 1.1",
     materiPokok: "Pola Gerak Dasar & Permainan Beregu",
-    tujuanPembelajaran: "Mempraktikkan variasi dan kombinasi gerak dasar lokomotor, non-lokomotor, dan manipulatif dengan koordinasi yang baik.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Mempraktikkan variasi dan kombinasi gerak dasar lokomotor, non-lokomotor, dan manipulatif dengan koordinasi yang baik."
   },
   {
     mapel: "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)",
@@ -235,8 +218,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Genap",
     kodeTp: "TP 2.1",
     materiPokok: "Kebugaran Jasmani & Pola Hidup Sehat",
-    tujuanPembelajaran: "Menerapkan latihan kebugaran jasmani dasar, sportivitas tim, dan pembiasaan pola hidup bersih dan sehat secara mandiri.",
-    kategori: "Sedang"
+    tujuanPembelajaran: "Menerapkan latihan kebugaran jasmani dasar, sportivitas tim, dan pembiasaan pola hidup bersih dan sehat secara mandiri."
   },
 
   // Seni Budaya dan Prakarya
@@ -247,8 +229,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Ganjil",
     kodeTp: "TP 1.1",
     materiPokok: "Eksplorasi Seni Rupa 2D & 3D",
-    tujuanPembelajaran: "Mengeksplorasi unsur garis, warna, bentuk, dan tekstur dalam berkarya seni rupa menggunakan media alami atau sintetis.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Mengeksplorasi unsur garis, warna, bentuk, dan tekstur dalam berkarya seni rupa menggunakan media alami atau sintetis."
   },
   {
     mapel: "Seni Budaya dan Prakarya",
@@ -257,8 +238,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Genap",
     kodeTp: "TP 2.1",
     materiPokok: "Kriya & Apresiasi Seni Musik/Tari",
-    tujuanPembelajaran: "Menciptakan karya kriya fungsional bernilai guna dan mengapresiasi keunikan seni budaya nusantara dengan rasa bangga.",
-    kategori: "Sedang"
+    tujuanPembelajaran: "Menciptakan karya kriya fungsional bernilai guna dan mengapresiasi keunikan seni budaya nusantara dengan rasa bangga."
   },
 
   // Bahasa Inggris
@@ -269,8 +249,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Ganjil",
     kodeTp: "TP 1.1",
     materiPokok: "Greetings, Self-Introduction & Daily Words",
-    tujuanPembelajaran: "Mengidentifikasi, merespons ungkapan sapaan, dan memperkenalkan diri serta benda sekitar dalam bahasa Inggris sederhana.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Mengidentifikasi, merespons ungkapan sapaan, dan memperkenalkan diri serta benda sekitar dalam bahasa Inggris sederhana."
   },
   {
     mapel: "Bahasa Inggris",
@@ -279,8 +258,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Genap",
     kodeTp: "TP 2.1",
     materiPokok: "Descriptive Sentences & Simple Actions",
-    tujuanPembelajaran: "Mendeskripsikan ciri-ciri hewan, benda, serta aktivitas sehari-hari menggunakan kosakata dan struktur kalimat sederhana.",
-    kategori: "Sedang"
+    tujuanPembelajaran: "Mendeskripsikan ciri-ciri hewan, benda, serta aktivitas sehari-hari menggunakan kosakata dan struktur kalimat sederhana."
   },
 
   // Muatan Lokal
@@ -291,8 +269,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Ganjil",
     kodeTp: "TP 1.1",
     materiPokok: "Undak-Usuk Basa & Paguneman",
-    tujuanPembelajaran: "Memahami dan mempraktikkan tingkatan tutur bahasa daerah dalam percakapan santun di keluarga dan sekolah.",
-    kategori: "Tinggi"
+    tujuanPembelajaran: "Memahami dan mempraktikkan tingkatan tutur bahasa daerah dalam percakapan santun di keluarga dan sekolah."
   },
   {
     mapel: "Muatan Lokal (Bahasa Daerah)",
@@ -301,8 +278,7 @@ export const INITIAL_DEFAULT_TPS: Omit<BankTpItem, "id">[] = [
     semester: "Genap",
     kodeTp: "TP 2.1",
     materiPokok: "Cerita Rakyat & Aksara/Karya Sastra Daerah",
-    tujuanPembelajaran: "Menyimak serta menceritakan kembali kisah legenda daerah dan mengapresiasi tembang/pupuh tradisional daerah.",
-    kategori: "Sedang"
+    tujuanPembelajaran: "Menyimak serta menceritakan kembali kisah legenda daerah dan mengapresiasi tembang/pupuh tradisional daerah."
   }
 ];
 
@@ -336,6 +312,9 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
     }
   }, [isGuruKelas, teacherClass]);
 
+  // View Mode: Table (default) or Cards
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+
   // Add / Edit Modal State
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingTpId, setEditingTpId] = useState<string | null>(null);
@@ -347,7 +326,6 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
     kodeTp: string;
     materiPokok: string;
     tujuanPembelajaran: string;
-    kategori: "Tinggi" | "Sedang" | "Bimbingan" | "Umum";
   }>({
     mapel: "Matematika",
     kelas: "Semua Kelas",
@@ -355,8 +333,7 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
     semester: "Ganjil",
     kodeTp: "TP 1.1",
     materiPokok: "",
-    tujuanPembelajaran: "",
-    kategori: "Tinggi"
+    tujuanPembelajaran: ""
   });
 
   const getCurrentSelectedKelasFase = () => {
@@ -495,8 +472,7 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
       semester: "Ganjil",
       kodeTp: `TP 1.${bankTpList.length + 1}`,
       materiPokok: "",
-      tujuanPembelajaran: "",
-      kategori: "Tinggi"
+      tujuanPembelajaran: ""
     });
     setIsFormModalOpen(true);
   };
@@ -511,8 +487,7 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
       semester: item.semester || "Ganjil",
       kodeTp: item.kodeTp || "",
       materiPokok: item.materiPokok || "",
-      tujuanPembelajaran: item.tujuanPembelajaran,
-      kategori: item.kategori || "Tinggi"
+      tujuanPembelajaran: item.tujuanPembelajaran
     });
     setIsFormModalOpen(true);
   };
@@ -537,7 +512,6 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
         kodeTp: formData.kodeTp.trim() || undefined,
         materiPokok: formData.materiPokok.trim() || undefined,
         tujuanPembelajaran: tpText,
-        kategori: formData.kategori,
         createdBy: currentUser?.nama || "Guru Pengampu",
         updatedAt: Date.now(),
         createdAt: editingTpId ? undefined : Date.now()
@@ -695,7 +669,6 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
           kodeTp: raw.kodeTp || `TP ${index + 1}.1`,
           materiPokok: raw.materiPokok || aiForm.materiPokok || "Materi Pokok",
           tujuanPembelajaran: raw.tujuanPembelajaran,
-          kategori: raw.kategori || "Tinggi",
           createdBy: "AI Asisten Kurikulum",
           createdAt: Date.now(),
           updatedAt: Date.now()
@@ -737,14 +710,13 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
     try {
       const rows = bankTpList.map((item, idx) => ({
         "No": idx + 1,
-        "Kode TP": item.kodeTp || "-",
         "Mata Pelajaran": item.mapel,
-        "Fase": item.fase,
         "Kelas": item.kelas,
+        "Fase": item.fase,
         "Semester": item.semester,
+        "Kode TP": item.kodeTp || "-",
         "Materi Pokok": item.materiPokok || "-",
         "Tujuan Pembelajaran": item.tujuanPembelajaran,
-        "Kategori Capaian": item.kategori || "Umum",
         "Penulis / Sumber": item.createdBy || "Guru"
       }));
 
@@ -842,16 +814,6 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
           row["materiPokok"] ||
           "";
 
-        const kategoriRaw =
-          row["Kategori Capaian"] ||
-          row["Kategori"] ||
-          row["kategori"] ||
-          "Tinggi";
-
-        const kategori = ["Tinggi", "Sedang", "Bimbingan", "Umum"].includes(String(kategoriRaw))
-          ? (kategoriRaw as any)
-          : "Tinggi";
-
         const newItem: BankTpItem = {
           id: `tp_imp_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 7)}`,
           mapel: String(mapel).trim(),
@@ -861,7 +823,6 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
           kodeTp: String(kodeTp).trim(),
           materiPokok: String(materiPokok).trim(),
           tujuanPembelajaran: String(tpText).trim(),
-          kategori,
           createdBy: currentUser?.nama ? `${currentUser.nama} (Import Excel)` : "Import Excel",
           createdAt: Date.now(),
           updatedAt: Date.now()
@@ -916,8 +877,7 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
           "Kelas": "Kelas 4",
           "Semester": "Ganjil",
           "Materi Pokok": "Operasi Hitung Bilangan Cacah",
-          "Tujuan Pembelajaran": "Memahami dan menyelesaikan operasi hitung penjumlahan dan pengurangan bilangan cacah sampai 10.000.",
-          "Kategori Capaian": "Tinggi"
+          "Tujuan Pembelajaran": "Memahami dan menyelesaikan operasi hitung penjumlahan dan pengurangan bilangan cacah sampai 10.000."
         },
         {
           "Kode TP": "TP 1.2",
@@ -926,8 +886,7 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
           "Kelas": "Kelas 4",
           "Semester": "Ganjil",
           "Materi Pokok": "Ide Pokok Teks Narasi",
-          "Tujuan Pembelajaran": "Menyimak dan menemukan ide pokok serta gagasan pendukung dalam teks narasi secara mandiri.",
-          "Kategori Capaian": "Tinggi"
+          "Tujuan Pembelajaran": "Menyimak dan menemukan ide pokok serta gagasan pendukung dalam teks narasi secara mandiri."
         }
       ];
 
@@ -1128,6 +1087,36 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
             <option value="Genap">Semester Genap</option>
           </select>
 
+          {/* View Mode Toggle: Table vs Cards */}
+          <div className="flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                viewMode === "table"
+                  ? "bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              }`}
+              title="Tampilan Tabel Utama"
+            >
+              <Table className="w-3.5 h-3.5" />
+              <span>Tabel Bank TP</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("cards")}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                viewMode === "cards"
+                  ? "bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              }`}
+              title="Tampilan Kartu per Mapel"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Kartu Mapel</span>
+            </button>
+          </div>
+
           {/* Export, Import & Preset Buttons */}
           <button
             onClick={handleExportExcel}
@@ -1203,141 +1192,220 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
           Tidak ditemukan Tujuan Pembelajaran dengan filter atau pencarian "{searchQuery}".
         </div>
       ) : (
-        /* Grouped Cards per Mata Pelajaran */
-        <div className="space-y-6">
-          {(Object.entries(groupedTps) as [string, BankTpItem[]][]).map(([mapelName, items]) => (
-            <div
-              key={mapelName}
-              className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm overflow-hidden"
-            >
-              {/* Group Header */}
-              <div className="px-5 py-3.5 bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-sm">
-                    {items.length}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">
-                      {mapelName}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {items.length} Tujuan Pembelajaran tersimpan
-                    </p>
-                  </div>
+        /* Content Display: Clean Table View (Default) or Cards View */
+        viewMode === "table" ? (
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm overflow-hidden">
+            <div className="px-5 py-3.5 bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                  <Table className="w-4 h-4" />
                 </div>
-
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => {
-                      setEditingTpId(null);
-                      setFormData({
-                        mapel: mapelName,
-                        kelas: "Semua Kelas",
-                        fase: "Fase B",
-                        semester: "Ganjil",
-                        kodeTp: `TP 1.${items.length + 1}`,
-                        materiPokok: "",
-                        tujuanPembelajaran: "",
-                        kategori: "Tinggi"
-                      });
-                      setIsFormModalOpen(true);
-                    }}
-                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 text-xs font-semibold transition"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Tambah di Mapel Ini</span>
-                  </button>
+                <div>
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm sm:text-base">
+                    Tabel Bank Tujuan Pembelajaran
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Menampilkan {filteredTps.length} butir TP aktif (Tanpa Kategori)
+                  </p>
                 </div>
               </div>
+              <button
+                onClick={handleOpenCreateModal}
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Tambah TP</span>
+              </button>
+            </div>
 
-              {/* Items Grid */}
-              <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                {items.map((tp) => (
-                  <div
-                    key={tp.id}
-                    className="group relative p-4 rounded-xl border border-slate-200/90 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition flex flex-col justify-between space-y-3"
-                  >
-                    <div className="space-y-2">
-                      {/* Badges Bar */}
-                      <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {tp.kodeTp && (
-                            <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300 font-bold">
-                              {tp.kodeTp}
-                            </span>
-                          )}
-                          <span className="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium">
-                            {tp.kelas && tp.kelas !== "Semua Kelas" ? `${tp.kelas} (${tp.fase || "Fase B"})` : (tp.fase || "Fase B")}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 font-medium">
-                            {tp.semester}
-                          </span>
-                        </div>
-
-                        {tp.kategori && (
-                          <span
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
-                              tp.kategori === "Tinggi"
-                                ? "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300"
-                                : tp.kategori === "Bimbingan"
-                                ? "bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300"
-                                : "bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300"
-                            }`}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-100/75 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                    <th className="py-3 px-3 w-12 text-center border-r border-slate-200 dark:border-slate-700">No</th>
+                    <th className="py-3 px-4 min-w-[170px] border-r border-slate-200 dark:border-slate-700">Mata Pelajaran</th>
+                    <th className="py-3 px-3 min-w-[110px] border-r border-slate-200 dark:border-slate-700">Kelas</th>
+                    <th className="py-3 px-3 min-w-[90px] border-r border-slate-200 dark:border-slate-700">Semester</th>
+                    <th className="py-3 px-3 min-w-[85px] border-r border-slate-200 dark:border-slate-700">Kode TP</th>
+                    <th className="py-3 px-4 min-w-[170px] border-r border-slate-200 dark:border-slate-700">Materi Pokok</th>
+                    <th className="py-3 px-4 min-w-[280px] border-r border-slate-200 dark:border-slate-700">Tujuan Pembelajaran</th>
+                    <th className="py-3 px-3 w-28 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
+                  {filteredTps.map((tp, idx) => (
+                    <tr
+                      key={tp.id}
+                      className="hover:bg-blue-50/50 dark:hover:bg-slate-700/40 transition duration-150"
+                    >
+                      <td className="py-3 px-3 text-center text-slate-400 font-semibold border-r border-slate-200/60 dark:border-slate-700/60">{idx + 1}</td>
+                      <td className="py-3 px-4 font-bold text-slate-900 dark:text-slate-100 border-r border-slate-200/60 dark:border-slate-700/60">{tp.mapel}</td>
+                      <td className="py-3 px-3 border-r border-slate-200/60 dark:border-slate-700/60">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-[11px]">
+                          {tp.kelas && tp.kelas !== "Semua Kelas" ? `${tp.kelas} (${tp.fase || "Fase B"})` : (tp.fase || "Semua")}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 border-r border-slate-200/60 dark:border-slate-700/60">
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 font-semibold text-[11px]">
+                          {tp.semester}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 font-bold text-blue-700 dark:text-blue-400 border-r border-slate-200/60 dark:border-slate-700/60">{tp.kodeTp || "-"}</td>
+                      <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-medium border-r border-slate-200/60 dark:border-slate-700/60">{tp.materiPokok || "-"}</td>
+                      <td className="py-3 px-4 font-medium leading-relaxed text-slate-800 dark:text-slate-100 max-w-md border-r border-slate-200/60 dark:border-slate-700/60">{tp.tujuanPembelajaran}</td>
+                      <td className="py-3 px-3 text-center">
+                        <div className="flex items-center justify-center space-x-1">
+                          <button
+                            onClick={() => handleCopyTp(tp.tujuanPembelajaran)}
+                            className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition cursor-pointer"
+                            title="Salin Kalimat TP"
                           >
-                            {tp.kategori}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Materi Pokok */}
-                      {tp.materiPokok && (
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                          Materi: <span className="text-slate-700 dark:text-slate-300">{tp.materiPokok}</span>
-                        </p>
-                      )}
-
-                      {/* Main TP Text */}
-                      <p className="text-sm text-slate-800 dark:text-slate-100 font-medium leading-relaxed">
-                        {tp.tujuanPembelajaran}
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEditModal(tp)}
+                            className="p-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 transition cursor-pointer"
+                            title="Edit TP"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTp(tp)}
+                            className="p-1.5 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 transition cursor-pointer"
+                            title="Hapus TP"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          /* Grouped Cards per Mata Pelajaran */
+          <div className="space-y-6">
+            {(Object.entries(groupedTps) as [string, BankTpItem[]][]).map(([mapelName, items]) => (
+              <div
+                key={mapelName}
+                className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm overflow-hidden"
+              >
+                {/* Group Header */}
+                <div className="px-5 py-3.5 bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-sm">
+                      {items.length}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">
+                        {mapelName}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {items.length} Tujuan Pembelajaran tersimpan
                       </p>
                     </div>
+                  </div>
 
-                    {/* Card Actions */}
-                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400">
-                      <span className="truncate max-w-[150px] text-[10px]">
-                        {tp.createdBy || "Guru"}
-                      </span>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        setEditingTpId(null);
+                        setFormData({
+                          mapel: mapelName,
+                          kelas: "Semua Kelas",
+                          fase: "Fase B",
+                          semester: "Ganjil",
+                          kodeTp: `TP 1.${items.length + 1}`,
+                          materiPokok: "",
+                          tujuanPembelajaran: ""
+                        });
+                        setIsFormModalOpen(true);
+                      }}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 text-xs font-semibold transition"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambah di Mapel Ini</span>
+                    </button>
+                  </div>
+                </div>
 
-                      <div className="flex items-center space-x-1">
-                        <button
-                          onClick={() => handleCopyTp(tp.tujuanPembelajaran)}
-                          className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition"
-                          title="Salin Kalimat TP"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleOpenEditModal(tp)}
-                          className="p-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 transition"
-                          title="Edit TP"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteTp(tp)}
-                          className="p-1.5 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 transition"
-                          title="Hapus TP"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                {/* Items Grid */}
+                <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {items.map((tp) => (
+                    <div
+                      key={tp.id}
+                      className="group relative p-4 rounded-xl border border-slate-200/90 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition flex flex-col justify-between space-y-3"
+                    >
+                      <div className="space-y-2">
+                        {/* Badges Bar */}
+                        <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {tp.kodeTp && (
+                              <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300 font-bold">
+                                {tp.kodeTp}
+                              </span>
+                            )}
+                            <span className="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium">
+                              {tp.kelas && tp.kelas !== "Semua Kelas" ? `${tp.kelas} (${tp.fase || "Fase B"})` : (tp.fase || "Fase B")}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 font-medium">
+                              {tp.semester}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Materi Pokok */}
+                        {tp.materiPokok && (
+                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            Materi: <span className="text-slate-700 dark:text-slate-300">{tp.materiPokok}</span>
+                          </p>
+                        )}
+
+                        {/* Main TP Text */}
+                        <p className="text-sm text-slate-800 dark:text-slate-100 font-medium leading-relaxed">
+                          {tp.tujuanPembelajaran}
+                        </p>
+                      </div>
+
+                      {/* Card Actions */}
+                      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                        <span className="truncate max-w-[150px] text-[10px]">
+                          {tp.createdBy || "Guru"}
+                        </span>
+
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={() => handleCopyTp(tp.tujuanPembelajaran)}
+                            className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition cursor-pointer"
+                            title="Salin Kalimat TP"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEditModal(tp)}
+                            className="p-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 transition cursor-pointer"
+                            title="Edit TP"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTp(tp)}
+                            className="p-1.5 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 transition cursor-pointer"
+                            title="Hapus TP"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )
       )}
 
       {/* Modal Form Tambah / Edit TP */}
@@ -1488,27 +1556,14 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
                 />
               </div>
 
-              {/* Kategori Capaian */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Kategori Capaian Target
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(["Tinggi", "Sedang", "Bimbingan", "Umum"] as const).map((kat) => (
-                    <button
-                      key={kat}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, kategori: kat })}
-                      className={`py-1.5 px-2 rounded-xl text-xs font-bold border transition ${
-                        formData.kategori === kat
-                          ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                          : "bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100"
-                      }`}
-                    >
-                      {kat}
-                    </button>
-                  ))}
-                </div>
+              {/* Sistem Multi-TP Otomatis (Tanpa Kategori) */}
+              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-900 dark:text-blue-200">
+                <span className="font-bold flex items-center gap-1.5 text-blue-800 dark:text-blue-300">
+                  ✨ Simple Multi-TP Auto-Concatenation
+                </span>
+                <p className="mt-1 text-[11px] text-blue-700 dark:text-blue-300/90 leading-relaxed">
+                  Guru tidak perlu lagi mengelompokkan kategori bobot. Cukup inputkan 1 atau beberapa TP yang diajarkan pada mata pelajaran & kelas ini, sistem otomatis menggabungkannya secara alami ke dalam deskripsi rapor siswa.
+                </p>
               </div>
 
               {/* Modal Buttons */}
