@@ -32,8 +32,7 @@ import {
   LogOut,
   User as UserIcon,
   ShieldCheck,
-  Lock,
-  FileSpreadsheet
+  Lock
 } from "lucide-react";
 import { User, Pengaturan } from "../types";
 
@@ -89,7 +88,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           group: "SISTEM & OUTPUT",
           items: [
-            { id: "cadangan_sheets", label: "Cadangan Google Sheets", icon: FileSpreadsheet, highlight: true },
             { id: "laporan", label: "Pusat Laporan", icon: Printer },
           ]
         }
@@ -140,7 +138,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           group: "SISTEM & OUTPUT",
           items: [
-            { id: "cadangan_sheets", label: "Cadangan Google Sheets", icon: FileSpreadsheet, highlight: true },
             { id: "laporan", label: "Pusat Laporan", icon: Printer },
             { id: "pengaturan", label: "Pengaturan & User", icon: Settings },
             ...(isAdmin

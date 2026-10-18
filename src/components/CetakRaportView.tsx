@@ -152,309 +152,29 @@ function getFaseByClass(kelas: string): string {
   return "Fase A";
 }
 
-export function isMatchingMapel(mapelA?: string, mapelB?: string): boolean {
-  if (!mapelA || !mapelB) return false;
-  const a = mapelA.toLowerCase().trim();
-  const b = mapelB.toLowerCase().trim();
-  if (a === b) return true;
-  if (a.includes(b) || b.includes(a)) return true;
-
-  const cleanA = a.replace(/[^a-z0-9]/g, "");
-  const cleanB = b.replace(/[^a-z0-9]/g, "");
-  if (cleanA && cleanB && (cleanA.includes(cleanB) || cleanB.includes(cleanA))) return true;
-
-  // Flexible Subject Matching
-  const isAgama = (s: string) => s.includes("agama") || s.includes("pai") || s.includes("budi pekerti") || s.includes("islam") || s.includes("kristen") || s.includes("katolik") || s.includes("hindu") || s.includes("buddha");
-  if (isAgama(a) && isAgama(b)) return true;
-
-  const isPancasila = (s: string) => s.includes("pancasila") || s.includes("pkn") || s.includes("ppkn") || s.includes("kewarganegaraan");
-  if (isPancasila(a) && isPancasila(b)) return true;
-
-  const isIndo = (s: string) => s.includes("indo") || s.includes("indonesia") || s.includes("bind");
-  if (isIndo(a) && isIndo(b)) return true;
-
-  const isMtk = (s: string) => s.includes("mtk") || s.includes("matematika") || s.includes("math") || s.includes("berhitung");
-  if (isMtk(a) && isMtk(b)) return true;
-
-  const isIpas = (s: string) => s.includes("ipas") || s.includes("alam dan sosial") || s.includes("ipa") || s.includes("ips");
-  if (isIpas(a) && isIpas(b)) return true;
-
-  const isPjok = (s: string) => s.includes("pjok") || s.includes("jasmani") || s.includes("olahraga") || s.includes("penjas") || s.includes("penjaskes");
-  if (isPjok(a) && isPjok(b)) return true;
-
-  const isSeni = (s: string) => s.includes("seni") || s.includes("sbdp") || s.includes("prakarya") || s.includes("budaya") || s.includes("rupa") || s.includes("musik") || s.includes("tari");
-  if (isSeni(a) && isSeni(b)) return true;
-
-  const isInggris = (s: string) => s.includes("inggris") || s.includes("english") || s.includes("bing");
-  if (isInggris(a) && isInggris(b)) return true;
-
-  const isMulok = (s: string) => s.includes("muatan lokal") || s.includes("daerah") || s.includes("mulok") || s.includes("sunda") || s.includes("jawa") || s.includes("madura") || s.includes("bali");
-  if (isMulok(a) && isMulok(b)) return true;
-
-  return false;
-}
-
-export function isMatchingClass(itemClass?: string, targetClass?: string): boolean {
-  if (!itemClass || !targetClass) return true;
-  const ic = itemClass.toLowerCase().trim();
-  const tc = targetClass.toLowerCase().trim();
-  if (ic === "semua kelas" || ic === "semua" || ic === "" || tc === "semua kelas" || tc === "semua" || tc === "") return true;
-  if (ic === tc) return true;
-  if (ic.includes(tc) || tc.includes(ic)) return true;
-
-  const numI = ic.replace(/[^0-9]/g, "");
-  const numT = tc.replace(/[^0-9]/g, "");
-  if (numI && numT && numI === numT) return true;
-
-  const faseI = getFaseByClass(ic);
-  const faseT = getFaseByClass(tc);
-  if (faseI && faseT && faseI === faseT) return true;
-
-  return false;
-}
-
-export function isGenericDummyDesc(text?: string | null): boolean {
-  if (!text) return true;
-  const lower = text.toLowerCase();
-  return (
-    lower.includes("penerapan capaian pembelajaran") ||
-    lower.includes("seluruh materi pokok dan tujuan pembelajaran") ||
-    lower.includes("kriteria ketuntasan minimal pada mata pelajaran") ||
-    lower.includes("pada konsep pengenalan materi") ||
-    lower.includes("pendalaman materi yang lebih kompleks") ||
-    lower.includes("indikator soal dan pemecahan masalah") ||
-    lower.includes("remedial untuk mencapai tujuan pembelajaran pokok") ||
-    lower.includes("diisi otomatis sesuai nilai dan keterangan") ||
-    lower.includes("mampu bernalar kritis secara mandiri") ||
-    lower.includes("mampu mengaplikasikan konsep dengan cermat")
-  );
-}
-
-// Memeriksa apakah deskripsi tersimpan merupakan deskripsi lama 1 TP yang belum tergabung secara multi-TP atau belum sesuai KKTP
-export function isOutdatedSingleTp(currentDesc: string | undefined | null, freshFullDesc: string): boolean {
-  if (!currentDesc) return true;
-  const cur = currentDesc.trim();
-  const fresh = freshFullDesc.trim();
-  if (cur === fresh) return false;
-  if (isGenericDummyDesc(cur)) return true;
-
-  // Jika status ketuntasan fresh berbeda dari cur (misal fresh butuh "Perlu peningkatan..." tapi cur masih "Menunjukkan...")
-  if (fresh.startsWith("Perlu peningkatan konsistensi pemahaman dan pendampingan dalam") && !cur.startsWith("Perlu peningkatan konsistensi pemahaman dan pendampingan dalam")) {
-    return true;
+function generateDefaultDeskripsi(mapel: string, nilaiNum: number): { tinggi: string; perluBimbingan: string } {
+  if (nilaiNum >= 90) {
+    return {
+      tinggi: `Menunjukkan penguasaan yang sangat istimewa dalam seluruh materi pokok dan tujuan pembelajaran ${mapel}. Mampu bernalar kritis dan mandiri.`,
+      perluBimbingan: `Pertahankan prestasi unggul dan perluas pengayaan pada studi kasus aplikatif.`
+    };
+  } else if (nilaiNum >= 80) {
+    return {
+      tinggi: `Menunjukkan penguasaan materi yang sangat baik dalam memahami konsep dasar dan penerapan capaian pembelajaran ${mapel}.`,
+      perluBimbingan: `Perlu peningkatan konsistensi pemahaman pada pendalaman materi yang lebih kompleks.`
+    };
+  } else if (nilaiNum >= 75) {
+    return {
+      tinggi: `Menunjukkan pemahaman yang baik dan telah mencapai kriteria ketuntasan minimal pada mata pelajaran ${mapel}.`,
+      perluBimbingan: `Perlu pendampingan dan latihan tambahan pada beberapa indikator soal dan pemecahan masalah.`
+    };
+  } else {
+    return {
+      tinggi: `Menunjukkan kemauan belajar yang cukup pada konsep pengenalan materi ${mapel}.`,
+      perluBimbingan: `Sangat membutuhkan bimbingan intensif dan remedial untuk mencapai tujuan pembelajaran pokok.`
+    };
   }
-  if (fresh.startsWith("Menunjukkan penguasaan sangat baik dalam") && !cur.startsWith("Menunjukkan penguasaan sangat baik dalam")) {
-    return true;
-  }
-
-  // Jika fresh description memiliki multiple TP yang digabungkan (" serta " atau koma), sedangkan cur belum
-  if (fresh.includes(" serta ") && !cur.includes(" serta ")) return true;
-  if ((fresh.match(/,/g) || []).length > (cur.match(/,/g) || []).length) return true;
-
-  // Jika masih menggunakan format lama "Menunjukkan kemauan belajar..."
-  if (cur.startsWith("Menunjukkan kemauan belajar")) return true;
-
-  // Format baku sesuai KKTP
-  const isTargetFormat = cur.startsWith("Menunjukkan penguasaan sangat baik dalam") ||
-                        cur.startsWith("Perlu peningkatan konsistensi pemahaman dan pendampingan dalam");
-  if (!isTargetFormat) return true;
-
-  // Jika isi TP di Bank TP berbeda dari yang tersimpan di cur
-  if (cur !== fresh) return true;
-
-  return false;
 }
-
-// Memeriksa apakah deskripsi rapor tersimpan perlu di-refresh secara real-time dari Bank TP
-export function shouldRefreshDeskripsi(
-  currentDesc: string | undefined | null,
-  freshFullDesc: string,
-  bankTpCount: number = 0
-): boolean {
-  if (!currentDesc || !currentDesc.trim()) return true;
-  const cur = currentDesc.trim();
-  const fresh = freshFullDesc.trim();
-  if (cur === fresh) return false;
-  if (isGenericDummyDesc(cur)) return true;
-  if (isOutdatedSingleTp(cur, fresh)) return true;
-
-  // Jika teks saat ini berformat otomatis Kurikulum Merdeka lama atau berbeda dengan susunan TP terbaru
-  const isAutoStandard =
-    cur.startsWith("Menunjukkan penguasaan") ||
-    cur.startsWith("Menunjukkan kemauan") ||
-    cur.startsWith("Pertahankan prestasi") ||
-    cur.startsWith("Perlu peningkatan") ||
-    cur.startsWith("Sangat baik dalam") ||
-    cur.startsWith("Telah mencapai");
-
-  if (isAutoStandard && cur !== fresh) return true;
-
-  // Jika di Bank TP terdapat TP aktif dan fresh terbentuk dari TP tersebut, timpa deskripsi lama yang berbeda
-  if (bankTpCount > 0 && cur !== fresh) {
-    if (fresh.includes(" serta ") || fresh.includes(",")) return true;
-  }
-
-  return false;
-}
-
-// Master Katalog TP Kurikulum Merdeka Resmi Kemendikbudristek per Fase / Kelas
-export const CLASS_PHASE_TP_TEMPLATES: Record<string, Record<string, string[]>> = {
-  "Fase A": { // Kelas 1 & 2
-    "Pendidikan Agama dan Budi Pekerti": [
-      "mengenal rukun iman, rukun Islam, dan melafalkan huruf hijaiyah berharakat secara lancar",
-      "melafalkan surah pendek Al-Fatihah dan Al-Ikhlas dengan makhraj yang benar",
-      "mempraktikkan adab makan, minum, dan berdoa harian dalam kehidupan sehari-hari",
-      "mempraktikkan tata cara bersuci (wudhu) dan gerakan salat secara tertib"
-    ],
-    "Pendidikan Pancasila": [
-      "mengenal dan menceritakan simbol serta sila-sila Pancasila dalam lambang negara Garuda Pancasila",
-      "mengidentifikasi dan menaati aturan di rumah dan di sekolah secara disiplin",
-      "menghargai identitas diri dan teman serta keragaman fisik di lingkungan sekitar",
-      "menunjukkan sikap gotong royong dan tolong-menolong dalam kegiatan kelas"
-    ],
-    "Bahasa Indonesia": [
-      "menyimak dan menceritakan kembali isi teks narasi pendek yang dibacakan dengan runtut",
-      "membaca kata-kata berima dan frasa sederhana dengan lafal dan intonasi yang tepat",
-      "menulis huruf, suku kata, dan kalimat sederhana dengan tegak bersambung dan tanda baca dasar",
-      "menyampaikan perasaan, gagasan, dan pertanyaan dengan kosa kata santun"
-    ],
-    "Matematika": [
-      "membilang, membandingkan, dan mengurutkan bilangan cacah sampai dengan 100",
-      "melakukan operasi penjumlahan dan pengurangan bilangan cacah secara mandiri dan cermat",
-      "mengenal, mengelompokkan, dan menyusun pola bangun datar dan bangun ruang sederhana",
-      "mengukur dan membandingkan panjang serta berat benda menggunakan satuan tidak baku"
-    ],
-    "Ilmu Pengetahuan Alam dan Sosial (IPAS)": [
-      "mengenal anggota tubuh, panca indra, dan cara merawat kebersihan serta kesehatan diri",
-      "mengamati dan menceritakan ciri benda, cuaca, dan kenampakan lingkungan sekitar",
-      "mengidentifikasi peran anggota keluarga dan silsilah keluarga di lingkungan rumah",
-      "membiasakan perilaku hemat energi dan peduli kebersihan lingkungan sekolah"
-    ],
-    "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)": [
-      "mempraktikkan pola gerak dasar lokomotor, non-lokomotor, dan manipulatif dalam aktivitas permainan",
-      "mengenal dan membiasakan pola hidup bersih, sehat, dan menjaga kebersihan pakaian",
-      "menunjukkan perilaku tertib, percaya diri, dan sportif saat berolahraga bersama teman"
-    ],
-    "Seni Budaya dan Prakarya": [
-      "mengenal dan mengeksplorasi garis, bentuk, dan warna primer dalam menggambar ekspresi",
-      "membuat karya kerajinan sederhana menggunakan teknik menggunting, melipat, dan menempel",
-      "menirukan irama, ketukan, dan menyanyikan lagu anak-anak dengan gembira"
-    ],
-    "Bahasa Inggris": [
-      "mengidentifikasi dan menirukan pengucapan kosakata benda, warna, dan angka sederhana",
-      "merespons instruksi lisan sederhana dan salam perkenalan diri dengan percaya diri",
-      "menyanyikan lagu sederhana berbahasa Inggris dengan lafal yang jelas"
-    ],
-    "Muatan Lokal (Bahasa Daerah)": [
-      "mengenal kosakata dasar sapaan santun dan anggota tubuh dalam bahasa daerah setempat",
-      "melafalkan dan menyanyikan tembang dolanan atau kakawihan anak dengan gembira",
-      "menirukan percakapan sederhana bahasa daerah dengan intonasi yang ramah"
-    ]
-  },
-  "Fase B": { // Kelas 3 & 4
-    "Pendidikan Agama dan Budi Pekerti": [
-      "membaca Q.S. Al-Hujurat ayat 13 dan Al-Ma'un dengan tartil sesuai kaidah tajwid",
-      "memahami dan meneladani asmaulhusna Al-Malik, Al-Aziz, Al-Quddus dalam akhlak terpuji",
-      "mempraktikkan tata cara salat fardhu, salat berjamaah, dan zikir secara benar dan khusyuk",
-      "menunjukkan sikap toleransi, tolong-menolong, dan menghargai keragaman antarsesama"
-    ],
-    "Pendidikan Pancasila": [
-      "menerapkan makna dan nilai-nilai luhur sila Pancasila dalam interaksi keseharian di sekolah dan masyarakat",
-      "menghargai keragaman suku bangsa, sosial budaya, dan bahasa dalam bingkai Bhinneka Tunggal Ika",
-      "melaksanakan hak dan kewajiban sebagai peserta didik dan warga masyarakat dengan bertanggung jawab",
-      "menunjukkan sikap musyawarah mufakat dan kepatuhan terhadap norma yang berlaku di lingkungan sekitar"
-    ],
-    "Bahasa Indonesia": [
-      "menyimak dan menemukan ide pokok serta gagasan pendukung dalam berbagai teks bacaan",
-      "menyampaikan pendapat dan tanggapan secara santun dan logis dalam forum diskusi kelompok",
-      "menulis teks deskripsi dan narasi menggunakan kosa kata baku serta kaidah ejaan yang tepat",
-      "membaca teks fiksi dan nonfiksi dengan intonasi ekspresif serta pemahaman isi yang mendalam"
-    ],
-    "Matematika": [
-      "memahami dan menyelesaikan operasi hitung bilangan cacah, pecahan senilai, dan desimal sederhana",
-      "menyelesaikan masalah kontekstual yang berkaitan dengan keliling dan luas bangun datar",
-      "menganalisis, menyajikan, dan menginterpretasikan data dalam bentuk diagram batang dan tabel frekuensi",
-      "mengukur sudut, waktu, dan berat menggunakan satuan baku secara akurat"
-    ],
-    "Ilmu Pengetahuan Alam dan Sosial (IPAS)": [
-      "menganalisis bentuk dan fungsi bagian tubuh tumbuhan serta adaptasi hewan terhadap lingkungannya",
-      "mengidentifikasi wujud zat, sifat materi, dan proses transformasi bentuk energi dalam keseharian",
-      "menjelaskan keragaman bentang alam serta interaksi sosial dan kegiatan ekonomi masyarakat sekitar",
-      "melakukan penyelidikan ilmiah sederhana dan mencatat hasil pengamatan secara sistematis"
-    ],
-    "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)": [
-      "mempraktikkan variasi dan kombinasi gerak dasar permainan bola besar, bola kecil, dan senam lantai",
-      "menerapkan latihan kebugaran jasmani dasar, sportivitas, dan kerjasama dalam aktivitas beregu",
-      "menerapkan pola istirahat, gizi seimbang, dan menjaga keselamatan diri di lingkungan sekolah"
-    ],
-    "Seni Budaya dan Prakarya": [
-      "mengeksplorasi unsur garis, tekstur, ruang, dan warna dalam berkarya seni rupa 2D dan 3D",
-      "menciptakan karya kriya fungsional berbahan daur ulang dengan teknik konstruksi sederhana",
-      "menampilkan apresiasi terhadap keunikan seni budaya nusantara dengan rasa bangga dan santun"
-    ],
-    "Bahasa Inggris": [
-      "mengidentifikasi, merespons ungkapan sapaan, dan mendeskripsikan aktivitas harian sederhana",
-      "membaca kata dan kalimat pendek berbahasa Inggris dengan pelafalan yang tepat dan jelas",
-      "menulis kata dan frasa sederhana tentang benda di kelas, makanan, dan hobi kegemaran"
-    ],
-    "Muatan Lokal (Bahasa Daerah)": [
-      "memahami undak-usuk basa atau tingkatan kesantunan bahasa daerah dalam percakapan sehari-hari",
-      "menyimak, membaca, dan menceritakan kembali dongeng atau cerita rakyat daerah dengan percaya diri",
-      "menulis kalimat sederhana menggunakan kosa kata bahasa daerah dengan ejaan yang benar"
-    ]
-  },
-  "Fase C": { // Kelas 5 & 6
-    "Pendidikan Agama dan Budi Pekerti": [
-      "membaca dan menganalisis kandungan pesan pokok Q.S. At-Tin serta hukum tajwid nun sukun",
-      "memahami makna iman kepada hari akhir, qada, dan qadar dalam membangun keteguhan hati",
-      "mempraktikkan ketentuan zakat, infak, dan sedekah serta kepedulian sosial di lingkungan masyarakat",
-      "meneladani perjuangan Rasulullah SAW dan para sahabat dalam menyebarkan nilai-nilai perdamaian"
-    ],
-    "Pendidikan Pancasila": [
-      "menganalisis penerapan nilai-nilai Pancasila dalam kehidupan berbangsa dan bernegara secara kritis",
-      "menyajikan hasil telaah norma sosial, konstitusi, dan pentingnya penegakan hukum yang adil",
-      "merancang aksi nyata dalam menjaga persatuan dan keutuhan Negara Kesatuan Republik Indonesia",
-      "menghargai keragaman budaya bangsa serta kearifan lokal dalam memperkuat jati diri nasional"
-    ],
-    "Bahasa Indonesia": [
-      "menganalisis teks eksplanasi, pidato, dan eksposisi dengan membedakan fakta dan opini secara kritis",
-      "berbicara dan mempresentasikan laporan hasil pengamatan dengan artikulasi jelas dan meyakinkan",
-      "menulis teks laporan investigasi, formulir, dan ulasan karya sastra dengan struktur yang runtut",
-      "mengidentifikasi pesan tersirat dalam teks sastra dan puisi modern dengan apresiasi mendalam"
-    ],
-    "Matematika": [
-      "melakukan operasi hitung campuran bilangan bulat, pecahan, desimal, dan persentase dengan tepat",
-      "menghitung keliling lingkaran, luas bangun gabungan, dan volume bangun ruang (kubus, balok, prisma)",
-      "menganalisis dan menyajikan data statistik (mean, median, modus) dalam pemecahan masalah kontekstual",
-      "memahami perbandingan dan skala pada denah dan peta dengan penalaran matematis"
-    ],
-    "Ilmu Pengetahuan Alam dan Sosial (IPAS)": [
-      "menganalisis sistem organ pernapasan, pencernaan, dan peredaran darah manusia serta pemeliharaannya",
-      "menjelaskan hubungan rantai makanan, jaring-jaring makanan, dan keseimbangan ekosistem hayati",
-      "menjelaskan sifat gaya, gelombang bunyi, cahaya, dan pemanfaatan energi listrik alternatif",
-      "menganalisis letak geografis Indonesia dan warisan budaya bangsa dalam interaksi antarnegara"
-    ],
-    "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)": [
-      "mempraktikkan variasi dan kombinasi keterampilan teknik dasar olahraga atletik dan bela diri",
-      "mengukur komponen kebugaran jasmani dan mempraktikkan pencegahan cedera saat berolahraga",
-      "menganalisis pentingnya menjaga kesehatan reproduksi dan menghindari zat berbahaya (NAPZA)"
-    ],
-    "Seni Budaya dan Prakarya": [
-      "menciptakan karya seni rupa murni dan terapan dengan memperhatikan prinsip komposisi dan proporsi",
-      "merancang dan membuat produk kriya bernilai estetis dan ekonomis dari potensi bahan lokal",
-      "menganalisis makna simbolis ragam motif hias dan warisan seni rupa tradisional nusantara"
-    ],
-    "Bahasa Inggris": [
-      "memahami ide pokok dan informasi spesifik dari teks dialog atau cerita pendek berbahasa Inggris",
-      "mengungkapkan ide, preferensi, dan tanya-jawab sederhana dalam situasi interaksi keseharian",
-      "menulis teks deskriptif pendek dengan tata bahasa dan kosa kata yang tepat dan komunikatif"
-    ],
-    "Muatan Lokal (Bahasa Daerah)": [
-      "menganalisis pesan moral dalam cerita pendek, carita pondok, atau aksara tradisional daerah",
-      "berkomunikasi lisan menggunakan tatakrama bahasa daerah yang luwes, santun, dan komunikatif",
-      "menulis karangan deskripsi atau pidato singkat (biantara/sesorah) dalam bahasa daerah"
-    ]
-  }
-};
 
 export const DEFAULT_TP_TEMPLATES: Record<string, string[]> = {
   "Matematika": [
@@ -509,127 +229,83 @@ export const DEFAULT_TP_TEMPLATES: Record<string, string[]> = {
   ]
 };
 
-export function getFallbackTpsForClassAndMapel(kelas?: string, mapel?: string): string[] {
-  if (!mapel) return [];
-  const fase = getFaseByClass(kelas || "");
-  const faseGroup = CLASS_PHASE_TP_TEMPLATES[fase] || CLASS_PHASE_TP_TEMPLATES["Fase B"];
-  
-  if (faseGroup) {
-    const matchedKey = Object.keys(faseGroup).find((k) => isMatchingMapel(k, mapel));
-    if (matchedKey && faseGroup[matchedKey] && faseGroup[matchedKey].length > 0) {
-      return faseGroup[matchedKey];
-    }
-  }
-
-  const defKey = Object.keys(DEFAULT_TP_TEMPLATES).find((k) => isMatchingMapel(k, mapel));
-  if (defKey && DEFAULT_TP_TEMPLATES[defKey] && DEFAULT_TP_TEMPLATES[defKey].length > 0) {
-    return DEFAULT_TP_TEMPLATES[defKey];
-  }
-
-  return [
-    `memahami materi pokok dan capaian pembelajaran ${mapel}`,
-    `menerapkan pemahaman materi dalam menyelesaikan tugas kontekstual`,
-    `berpikir kritis dan menyajikan hasil belajar secara mandiri`
-  ];
-}
-
 export function cleanTpText(text: string, mapelFallback: string = ""): string {
   let t = (text || "").trim();
+  // Remove numbering or prefixes such as "1.1 ", "TP 1.1: ", "TP 1 - "
   t = t.replace(/^(TP\s*[\d.]*[:\s-]*|\d+[\.\)]\s*)/i, "").trim();
   if (t.endsWith(".")) t = t.slice(0, -1);
   if (!t) return `konsep materi ${mapelFallback}`.trim();
   return t.charAt(0).toLowerCase() + t.slice(1);
 }
 
-/**
- * Penggabungan Seluruh TP secara Alami (Smart Concatenation)
- * - 1 TP: "...[TP 1]"
- * - 2 TP: "...[TP 1] serta [TP 2]"
- * - >=3 TP: "...[TP 1], [TP 2], serta [TP 3]"
- */
-export function concatenateTpListNaturally(tps: string[], mapelFallback: string = ""): string {
-  const cleanedList = (tps || [])
-    .map((t) => cleanTpText(t, mapelFallback))
-    .filter(Boolean);
-
-  // Ambil butir unik
-  const uniqueList: string[] = [];
-  cleanedList.forEach((item) => {
-    if (!uniqueList.some((u) => u.toLowerCase() === item.toLowerCase())) {
-      uniqueList.push(item);
-    }
-  });
-
-  if (uniqueList.length === 0) {
-    return `materi pokok dan capaian pembelajaran ${mapelFallback}`.trim();
-  }
-  if (uniqueList.length === 1) {
-    return uniqueList[0];
-  }
-  if (uniqueList.length === 2) {
-    return `${uniqueList[0]} serta ${uniqueList[1]}`;
-  }
-  const last = uniqueList[uniqueList.length - 1];
-  const initial = uniqueList.slice(0, -1).join(", ");
-  return `${initial}, serta ${last}`;
-}
-
-// Simple Multi-TP Auto-Concatenation & Logika Standar Ketuntasan (KKTP)
-// Jika Nilai >= KKTP (Tuntas / Sangat Baik) -> "Menunjukkan penguasaan sangat baik dalam [Daftar Seluruh TP dari Bank TP Kelas]."
-// Jika Nilai < KKTP (Belum Tuntas / Perlu Pendampingan) -> "Perlu peningkatan konsistensi pemahaman dan pendampingan dalam [Daftar Seluruh TP dari Bank TP Kelas]."
 export function generateFallbackDeskripsiFromTp(
   mapel: string,
-  nilaiNum: number | string | undefined | null,
-  tps?: string[],
-  bankItems?: BankTpItem[],
-  kelas?: string,
-  kktpThreshold: number | string = 75
+  nilaiNum: number,
+  tps: string[],
+  bankItems?: BankTpItem[]
 ): { tinggi: string; perluBimbingan: string } {
-  const scoreVal = (nilaiNum !== undefined && nilaiNum !== null && nilaiNum !== "" && !isNaN(Number(nilaiNum)))
-    ? Number(nilaiNum)
-    : 80;
-  const kktpVal = (kktpThreshold !== undefined && kktpThreshold !== null && kktpThreshold !== "" && !isNaN(Number(kktpThreshold)))
-    ? Number(kktpThreshold)
-    : 75;
+  const rawList = tps && tps.length > 0 ? tps : (DEFAULT_TP_TEMPLATES[mapel] || [
+    `memahami konsep dasar dan materi pokok ${mapel}`,
+    `menerapkan pemahaman dalam menyelesaikan tugas kontekstual`,
+    `berpikir kritis dan menyajikan hasil telaah secara mandiri`
+  ]);
 
-  let candidateTps: string[] = [];
+  let tpBest = "";
+  let tpSecond = "";
+  let tpNeedHelp = "";
 
-  // 1. Ambil seluruh TP yang ada di Bank TP untuk Mapel & Kelas tersebut (Tanpa Kategori)
+  // Prioritize based on Bank TP items and their categorized difficulty if available
   if (bankItems && bankItems.length > 0) {
-    candidateTps = bankItems.map((b) => b.tujuanPembelajaran).filter(Boolean);
+    const tinggiItems = bankItems.filter((b) => b.kategori === "Tinggi");
+    const sedangItems = bankItems.filter((b) => b.kategori === "Sedang");
+    const bimbinganItems = bankItems.filter((b) => b.kategori === "Bimbingan" || b.kategori === "Umum");
+
+    if (nilaiNum >= 90) {
+      tpBest = tinggiItems[0]?.tujuanPembelajaran || rawList[0] || `konsep utama ${mapel}`;
+      tpSecond = tinggiItems[1]?.tujuanPembelajaran || sedangItems[0]?.tujuanPembelajaran || rawList[1] || tpBest;
+      tpNeedHelp = rawList[rawList.length - 1] || `pengayaan materi aplikatif ${mapel}`;
+    } else if (nilaiNum >= 80) {
+      tpBest = sedangItems[0]?.tujuanPembelajaran || tinggiItems[0]?.tujuanPembelajaran || rawList[0] || `konsep dasar ${mapel}`;
+      tpSecond = sedangItems[1]?.tujuanPembelajaran || rawList[1] || tpBest;
+      tpNeedHelp = tinggiItems[0]?.tujuanPembelajaran || rawList[rawList.length - 1] || `materi lanjutan ${mapel}`;
+    } else if (nilaiNum >= 75) {
+      tpBest = bimbinganItems[0]?.tujuanPembelajaran || rawList[0] || `konsep dasar ${mapel}`;
+      tpNeedHelp = sedangItems[0]?.tujuanPembelajaran || tinggiItems[0]?.tujuanPembelajaran || rawList[rawList.length - 1] || `pemecahan masalah ${mapel}`;
+    } else {
+      tpBest = bimbinganItems[0]?.tujuanPembelajaran || rawList[0] || `pengenalan materi ${mapel}`;
+      tpNeedHelp = bimbinganItems[1]?.tujuanPembelajaran || sedangItems[0]?.tujuanPembelajaran || rawList[rawList.length - 1] || `kompetensi dasar ${mapel}`;
+    }
   }
 
-  // 2. Jika belum ada di bankItems, gunakan tps param jika tersedia
-  if (candidateTps.length === 0 && tps && tps.length > 0) {
-    candidateTps = [...tps];
-  }
+  if (!tpBest) tpBest = rawList[0] || `konsep utama ${mapel}`;
+  if (!tpSecond) tpSecond = rawList[1] || tpBest;
+  if (!tpNeedHelp) tpNeedHelp = rawList[rawList.length - 1] || `pendalaman materi ${mapel}`;
 
-  // 3. Jika masih kosong, ambil otomatis dari Master Katalog TP Kurikulum Merdeka per Kelas
-  if (candidateTps.length === 0) {
-    candidateTps = getFallbackTpsForClassAndMapel(kelas, mapel);
-  }
+  const cBest = cleanTpText(tpBest, mapel);
+  const cSecond = cleanTpText(tpSecond, mapel);
+  const cNeedHelp = cleanTpText(tpNeedHelp, mapel);
 
-  // Penggabungan Seluruh TP secara Alami (Smart Concatenation)
-  const mergedTpsText = concatenateTpListNaturally(candidateTps, mapel);
-
-  // 3. Logika Deskripsi Rapor Berdasarkan Standar Ketuntasan (KKTP)
-  if (scoreVal >= kktpVal) {
-    const textTuntas = `Menunjukkan penguasaan sangat baik dalam ${mergedTpsText}.`;
+  if (nilaiNum >= 90) {
     return {
-      tinggi: textTuntas,
-      perluBimbingan: `Pertahankan prestasi dan tingkatkan kemandirian dalam pendalaman ${mergedTpsText}.`
+      tinggi: `Menunjukkan penguasaan sangat istimewa dalam ${cBest} serta terampil dalam ${cSecond}. Mampu bernalar kritis secara mandiri.`,
+      perluBimbingan: `Pertahankan prestasi unggul dan perluas pengayaan mandiri pada studi kasus aplikatif ${mapel}.`
+    };
+  } else if (nilaiNum >= 80) {
+    return {
+      tinggi: `Menunjukkan penguasaan yang sangat baik dalam ${cBest} dan mampu mengaplikasikan konsep dengan cermat.`,
+      perluBimbingan: `Perlu peningkatan konsistensi dan pendalaman pada ${cNeedHelp}.`
+    };
+  } else if (nilaiNum >= 75) {
+    return {
+      tinggi: `Menunjukkan pemahaman yang cukup baik dan telah mencapai kriteria ketuntasan dalam ${cBest}.`,
+      perluBimbingan: `Perlu pendampingan dan latihan tambahan dalam ${cNeedHelp}.`
     };
   } else {
-    const textBelumTuntas = `Perlu peningkatan konsistensi pemahaman dan pendampingan dalam ${mergedTpsText}.`;
     return {
-      tinggi: textBelumTuntas,
-      perluBimbingan: textBelumTuntas
+      tinggi: `Menunjukkan kemauan belajar pada pengenalan materi ${cBest}.`,
+      perluBimbingan: `Sangat membutuhkan bimbingan intensif dan remedial terarah dalam ${cNeedHelp}.`
     };
   }
-}
-
-export function generateDefaultDeskripsi(mapel: string, nilaiNum: number | string, kelas?: string): { tinggi: string; perluBimbingan: string } {
-  return generateFallbackDeskripsiFromTp(mapel, nilaiNum, [], undefined, kelas);
 }
 
 /**
@@ -1342,9 +1018,14 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
       bankTpList.forEach((item) => {
         if (!item.mapel || !item.tujuanPembelajaran) return;
 
-        // Flexible class filter: verify match with selectedKelas
-        if (selectedKelas && !isMatchingClass(item.kelas, selectedKelas)) {
-          return;
+        // Strict class filter: verify match with selectedKelas
+        if (selectedKelas) {
+          const itemK = (item.kelas || "").toLowerCase().trim();
+          const selK = selectedKelas.toLowerCase().trim();
+
+          const isSemua = !item.kelas || itemK === "semua kelas" || itemK === "semua" || itemK === "";
+          const isMatch = isSemua || itemK === selK || itemK.includes(selK) || selK.includes(itemK);
+          if (!isMatch) return;
         }
 
         const tpText = item.tujuanPembelajaran.trim();
@@ -1356,8 +1037,20 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
           combined[item.mapel].push(tpText);
         }
 
+        const itemMapelLower = item.mapel.toLowerCase().trim();
         activeMapelNames.forEach((targetMapel) => {
-          if (isMatchingMapel(targetMapel, item.mapel)) {
+          const targetLower = targetMapel.toLowerCase().trim();
+          if (
+            targetLower === itemMapelLower ||
+            targetLower.includes(itemMapelLower) ||
+            itemMapelLower.includes(targetLower) ||
+            (itemMapelLower.includes("ipas") && targetLower.includes("ipas")) ||
+            (itemMapelLower.includes("pancasila") && targetLower.includes("pancasila")) ||
+            (itemMapelLower.includes("mtk") && (targetLower.includes("matematika") || targetLower.includes("mtk"))) ||
+            (itemMapelLower.includes("matematika") && targetLower.includes("matematika")) ||
+            (itemMapelLower.includes("indo") && targetLower.includes("indo")) ||
+            (itemMapelLower.includes("agama") && targetLower.includes("agama"))
+          ) {
             if (!combined[targetMapel]) {
               combined[targetMapel] = [];
             }
@@ -1368,18 +1061,6 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
         });
       });
     }
-
-    // 2b. Auto-populate from Kurikulum Merdeka Master TP per class if Bank TP is empty for this mapel
-    activeMapelNames.forEach((m) => {
-      if (!combined[m] || combined[m].length === 0) {
-        combined[m] = getFallbackTpsForClassAndMapel(selectedKelas, m);
-      }
-    });
-    DEFAULT_MAPEL_LIST.forEach((m) => {
-      if (!combined[m] || combined[m].length === 0) {
-        combined[m] = getFallbackTpsForClassAndMapel(selectedKelas, m);
-      }
-    });
 
     // 3. Strict exclusion filter for blacklisted deleted TPs
     Object.keys(combined).forEach((m) => {
@@ -1553,10 +1234,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
 
         if (results.length === 0) {
           results = studentsPayload.map((s) => {
-            const studentItem = classStudents.find((st) => st.id === s.id);
-            const sKelas = studentItem?.kelas || selectedKelas;
-            const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, activeTpMapel) && isMatchingClass(b.kelas, sKelas));
-            const fb = generateFallbackDeskripsiFromTp(activeTpMapel, s.nilai, currentTps, mapelBankItems, sKelas, 75);
+            const fb = generateFallbackDeskripsiFromTp(activeTpMapel, s.nilai, currentTps);
             return {
               id: s.id,
               capaianTinggi: fb.tinggi,
@@ -1631,8 +1309,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
         }
 
         if (!resTinggi) {
-          const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, activeTpMapel) && isMatchingClass(b.kelas, targetStudent.kelas));
-          const fb = generateFallbackDeskripsiFromTp(activeTpMapel, score, currentTps, mapelBankItems, targetStudent.kelas, 75);
+          const fb = generateFallbackDeskripsiFromTp(activeTpMapel, score, currentTps);
           resTinggi = fb.tinggi;
           resBimbingan = fb.perluBimbingan;
         }
@@ -1708,8 +1385,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
     } catch {}
 
     if (!tinggi) {
-      const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, mapelName) && isMatchingClass(b.kelas, student.kelas));
-      const fb = generateFallbackDeskripsiFromTp(mapelName, currentScore, tps, mapelBankItems, student.kelas, 75);
+      const fb = generateFallbackDeskripsiFromTp(mapelName, currentScore, tps);
       tinggi = fb.tinggi;
       bimbingan = fb.perluBimbingan;
     }
@@ -1790,57 +1466,18 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
     const altDocId2 = `raport_${siswa.id}_${selectedPeriode}`;
     const altDocId3 = `raport_${siswa.id}`;
 
-    // Otomatis memperbarui deskripsi secara real-time dari seluruh TP Bank TP kelas & mapel
-    const upgradeRaportNilaiMapel = (record: RaportRecord): RaportRecord => {
-      if (!record || !Array.isArray(record.nilaiMapel)) return record;
-      let hasChanges = false;
-      const updatedNilaiMapel = record.nilaiMapel.map((nm) => {
-        const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
-        const scoreVal = !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80;
-        const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, nm.mapel) && isMatchingClass(b.kelas, siswa.kelas));
-        const currentTps = effectiveTpBank[nm.mapel] || getFallbackTpsForClassAndMapel(siswa.kelas, nm.mapel);
-        const desc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems, siswa.kelas, kktpVal);
-
-        const currentTinggi = (nm.capaianKompetensiTinggi || nm.deskripsi || "").trim();
-        const currentBimbingan = (nm.capaianKompetensiPerluBimbingan || "").trim();
-
-        const isTuntas = scoreVal >= kktpVal;
-        const isMismatchWithScore = isTuntas
-          ? !currentTinggi.startsWith("Menunjukkan penguasaan sangat baik dalam")
-          : !currentTinggi.startsWith("Perlu peningkatan konsistensi pemahaman dan pendampingan dalam");
-
-        const needsTinggi = isMismatchWithScore || shouldRefreshDeskripsi(currentTinggi, desc.tinggi, mapelBankItems?.length || 0);
-        const needsBimbingan = shouldRefreshDeskripsi(currentBimbingan, desc.perluBimbingan, mapelBankItems?.length || 0);
-
-        if (needsTinggi || needsBimbingan) {
-          hasChanges = true;
-          return {
-            ...nm,
-            nilaiAkhir: scoreVal,
-            kktp: kktpVal,
-            capaianKompetensiTinggi: needsTinggi ? desc.tinggi : (currentTinggi || desc.tinggi),
-            capaianKompetensiPerluBimbingan: needsBimbingan ? desc.perluBimbingan : (currentBimbingan || desc.perluBimbingan),
-            deskripsi: needsTinggi ? desc.tinggi : (nm.deskripsi || desc.tinggi)
-          };
-        }
-        return nm;
-      });
-
-      return hasChanges ? { ...record, nilaiMapel: updatedNilaiMapel } : record;
-    };
-
     // 1. Check in-memory state for any matching key
-    if (raportRecords[primaryDocId]) return upgradeRaportNilaiMapel(raportRecords[primaryDocId]);
-    if (raportRecords[altDocId1]) return upgradeRaportNilaiMapel({ ...raportRecords[altDocId1], id: primaryDocId });
-    if (raportRecords[altDocId2]) return upgradeRaportNilaiMapel({ ...raportRecords[altDocId2], id: primaryDocId });
-    if (raportRecords[altDocId3]) return upgradeRaportNilaiMapel({ ...raportRecords[altDocId3], id: primaryDocId });
+    if (raportRecords[primaryDocId]) return raportRecords[primaryDocId];
+    if (raportRecords[altDocId1]) return { ...raportRecords[altDocId1], id: primaryDocId };
+    if (raportRecords[altDocId2]) return { ...raportRecords[altDocId2], id: primaryDocId };
+    if (raportRecords[altDocId3]) return { ...raportRecords[altDocId3], id: primaryDocId };
 
     // 1b. Search in-memory state values for matching student ID & period
     const foundInState = Object.values(raportRecords).find(
       (r: RaportRecord) => r && r.idSiswa === siswa.id && (r.periode === selectedPeriode || !r.periode)
     );
     if (foundInState) {
-      return upgradeRaportNilaiMapel({ ...(foundInState as RaportRecord), id: primaryDocId });
+      return { ...(foundInState as RaportRecord), id: primaryDocId };
     }
 
     // 2. Check localStorage cache
@@ -1848,15 +1485,15 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
       const cachedStr = localStorage.getItem("edadmin_persisted_raport_records");
       if (cachedStr) {
         const cachedMap = JSON.parse(cachedStr);
-        if (cachedMap[primaryDocId]) return upgradeRaportNilaiMapel(cachedMap[primaryDocId]);
-        if (cachedMap[altDocId1]) return upgradeRaportNilaiMapel({ ...cachedMap[altDocId1], id: primaryDocId });
-        if (cachedMap[altDocId2]) return upgradeRaportNilaiMapel({ ...cachedMap[altDocId2], id: primaryDocId });
+        if (cachedMap[primaryDocId]) return cachedMap[primaryDocId];
+        if (cachedMap[altDocId1]) return { ...cachedMap[altDocId1], id: primaryDocId };
+        if (cachedMap[altDocId2]) return { ...cachedMap[altDocId2], id: primaryDocId };
 
         const foundInCache = Object.values(cachedMap).find(
           (r: any) => r && r.idSiswa === siswa.id && (r.periode === selectedPeriode || !r.periode)
         ) as RaportRecord | undefined;
         if (foundInCache) {
-          return upgradeRaportNilaiMapel({ ...foundInCache, id: primaryDocId });
+          return { ...foundInCache, id: primaryDocId };
         }
       }
     } catch {}
@@ -1870,11 +1507,11 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
     ) as RaportRecord | undefined;
 
     if (existingBiDoc && Array.isArray(existingBiDoc.nilaiMapel) && existingBiDoc.nilaiMapel.length > 0) {
-      return upgradeRaportNilaiMapel({
+      return {
         ...existingBiDoc,
         id: primaryDocId,
         tahunAjaran: selectedTahunAjaran
-      });
+      };
     }
 
     // 4. Fallback baseline: only generated if never saved before
@@ -1900,10 +1537,11 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
         }
       }
 
-      // Check if we have Bank TP for this mapel & class (Solusi B)
-      const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, mapel) && isMatchingClass(b.kelas, siswa.kelas));
-      const availableTps = effectiveTpBank[mapel] || getFallbackTpsForClassAndMapel(siswa.kelas, mapel);
-      const desc = generateFallbackDeskripsiFromTp(mapel, finalVal, availableTps, mapelBankItems, siswa.kelas, 75);
+      // Check if we have Bank TP for this mapel
+      const availableTps = effectiveTpBank[mapel] || DEFAULT_TP_TEMPLATES[mapel] || [];
+      const desc = availableTps.length > 0
+        ? generateFallbackDeskripsiFromTp(mapel, finalVal, availableTps)
+        : generateDefaultDeskripsi(mapel, finalVal);
 
       return {
         mapel,
@@ -2073,11 +1711,10 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
         classStudents.forEach((student) => {
           const currentRec = getRaportForStudent(student);
           const updatedNilaiMapel = currentRec.nilaiMapel.map((nm) => {
-            const scoreVal = !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80;
-            const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
-            const currentTps = effectiveTpBank[nm.mapel] || getFallbackTpsForClassAndMapel(student.kelas, nm.mapel);
-            const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, nm.mapel) && isMatchingClass(b.kelas, student.kelas));
-            const desc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems, student.kelas, kktpVal);
+            const scoreVal = typeof nm.nilaiAkhir === "number" ? nm.nilaiAkhir : 80;
+            const currentTps = effectiveTpBank[nm.mapel] || DEFAULT_TP_TEMPLATES[nm.mapel] || [];
+            const mapelBankItems = bankTpList?.filter((b) => b.mapel.toLowerCase() === nm.mapel.toLowerCase());
+            const desc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems);
 
             return {
               ...nm,
@@ -2452,13 +2089,13 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
     }
   };
 
-  // Export PDF with jsPDF (Folio / F4 215mm x 330mm - 1 Lembar Utuh Pas Margin)
+  // Export PDF with jsPDF
   const handleExportPDF = () => {
     try {
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: [215, 330] // Ukuran Resmi F4 / Folio Indonesia
+        format: "a4"
       });
 
       const targetStudents = selectedSiswaId === "all"
@@ -2470,149 +2107,59 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
         return;
       }
 
-      // -------------------------------------------------------------
-      // Helper: Render Lembar Cover (Halaman Cover Utuh Kertas F4)
-      // -------------------------------------------------------------
-      const renderCoverPage = (pdf: jsPDF, student: Siswa, studentRaport: RaportRecord) => {
-        // Bingkai Ganda Standar Kedinasan (Margin luar 12mm, margin dalam 14mm)
-        pdf.setDrawColor(30, 41, 59);
-        pdf.setLineWidth(1.2);
-        pdf.rect(12, 12, 191, 306);
-        pdf.setLineWidth(0.4);
-        pdf.rect(14, 14, 187, 302);
+      targetStudents.forEach((student, index) => {
+        if (index > 0) doc.addPage();
 
-        // Header Instansi
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(10.5);
-        pdf.text((config.Pemerintah || "PEMERINTAH KABUPATEN BOGOR").toUpperCase(), 107.5, 32, { align: "center" });
-        pdf.text((config.Dinas || "DINAS PENDIDIKAN").toUpperCase(), 107.5, 38, { align: "center" });
-        pdf.setFontSize(15);
-        pdf.text((config.Nama_Sekolah || "SD NEGERI BABAKAN 04").toUpperCase(), 107.5, 48, { align: "center" });
+        const studentRaport = getRaportForStudent(student);
 
-        // Judul Dokumen
-        pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("LAPORAN HASIL BELAJAR PESERTA DIDIK", 107.5, 63, { align: "center" });
-        pdf.setFontSize(9.5);
-        pdf.text("( RAPOR KURIKULUM MERDEKA )", 107.5, 70, { align: "center" });
-
-        // Logo Sekolah Tengah
-        if (config.Logo_Kiri) {
-          try {
-            pdf.addImage(config.Logo_Kiri, "PNG", 91.5, 84, 32, 32);
-          } catch (e) {}
-        }
-
-        // Keterangan Periode
-        pdf.setFontSize(11);
-        pdf.setFont("helvetica", "bold");
-        pdf.text(studentRaport.periodeNama.toUpperCase(), 107.5, 128, { align: "center" });
-        pdf.setFontSize(9.5);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(`Tahun Ajaran ${studentRaport.tahunAjaran}`, 107.5, 135, { align: "center" });
-
-        // Kotak Identitas Siswa
-        pdf.setFillColor(248, 250, 252);
-        pdf.setDrawColor(100, 116, 139);
-        pdf.setLineWidth(0.3);
-        pdf.roundedRect(32, 155, 151, 66, 3, 3, "FD");
-
-        pdf.setFontSize(9);
-        const rows = [
-          { label: "Nama Peserta Didik", val: student.nama.toUpperCase(), isBold: true },
-          { label: "NISN / NIS", val: `${student.nisn || "-"} / ${student.nis || "-"}`, isBold: false },
-          { label: "Kelas / Fase", val: `${student.kelas} / ${studentRaport.fase}`, isBold: false },
-          { label: "Nama Sekolah", val: config.Nama_Sekolah || "SD NEGERI BABAKAN 04", isBold: true },
-          { label: "NPSN", val: config.NPSN || "20200889", isBold: false }
-        ];
-
-        let boxY = 168;
-        rows.forEach((r) => {
-          pdf.setFont("helvetica", "normal");
-          pdf.text(r.label, 40, boxY);
-          pdf.text(":", 76, boxY);
-          if (r.isBold) pdf.setFont("helvetica", "bold");
-          pdf.text(r.val, 80, boxY);
-          boxY += 10;
-        });
-
-        // Footer Cover
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(9.5);
-        pdf.text((config.Nama_Sekolah || "SD NEGERI BABAKAN 04").toUpperCase(), 107.5, 290, { align: "center" });
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(8);
-        pdf.text(config.Alamat_Sekolah || "Kp. Babakan Kulon RT.05/02 Desa Babakan Kec. Ciseeng Kab. Bogor", 107.5, 296, { align: "center" });
-      };
-
-      // -------------------------------------------------------------
-      // Helper: Render Lembar Nilai (1 Lembar Utuh Kertas F4 Pas Margin)
-      // -------------------------------------------------------------
-      const renderLembarNilai = (pdf: jsPDF, student: Siswa, studentRaport: RaportRecord) => {
-        let topY = 10;
-
-        // 1. Kop Surat Kedinasan
+        // Header Kop Dinas Resmi
+        let topY = 12;
         if (showKopSekolah) {
           if (config.Logo_Kiri) {
             try {
-              pdf.addImage(config.Logo_Kiri, "PNG", 14, 8, 16, 16);
+              doc.addImage(config.Logo_Kiri, "PNG", 14, 10, 16, 16);
             } catch (e) {}
           }
           if (config.Logo_Kanan) {
             try {
-              pdf.addImage(config.Logo_Kanan, "PNG", 185, 8, 16, 16);
+              doc.addImage(config.Logo_Kanan, "PNG", 180, 10, 16, 16);
             } catch (e) {}
           }
 
-          pdf.setFontSize(9.5);
-          pdf.setFont("helvetica", "bold");
-          pdf.text((config.Pemerintah || "PEMERINTAH KABUPATEN BOGOR").toUpperCase(), 107.5, topY, { align: "center" });
-          pdf.text((config.Dinas || "DINAS PENDIDIKAN").toUpperCase(), 107.5, topY + 4, { align: "center" });
-          pdf.setFontSize(12.5);
-          pdf.text((config.Nama_Sekolah || "SD NEGERI BABAKAN 04").toUpperCase(), 107.5, topY + 9, { align: "center" });
-          pdf.setFontSize(7);
-          pdf.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          doc.setFont("helvetica", "bold");
+          doc.text((config.Pemerintah || "PEMERINTAH KABUPATEN BOGOR").toUpperCase(), 105, topY, { align: "center" });
+          doc.text((config.Dinas || "DINAS PENDIDIKAN").toUpperCase(), 105, topY + 4.5, { align: "center" });
+          doc.setFontSize(13);
+          doc.text((config.Nama_Sekolah || "SD NEGERI BABAKAN 04").toUpperCase(), 105, topY + 9.5, { align: "center" });
+          doc.setFontSize(7.5);
+          doc.setFont("helvetica", "normal");
           const alamatFull = `${config.Alamat_Sekolah || "Kp. Babakan Kulon RT.05/02 Desa Babakan Kec. Ciseeng Kab. Bogor"}${config.NPSN ? ` • NPSN: ${config.NPSN}` : ""}${config.Email_Sekolah ? ` • Email: ${config.Email_Sekolah}` : ""}`;
-          pdf.text(alamatFull, 107.5, topY + 13.5, { align: "center" });
-
-          pdf.setLineWidth(0.6);
-          pdf.line(14, topY + 16, 201, topY + 16);
-          pdf.setLineWidth(0.2);
-          pdf.line(14, topY + 16.8, 201, topY + 16.8);
-          topY += 21;
+          doc.text(alamatFull, 105, topY + 14, { align: "center" });
+          
+          // Garis Ganda Kop Surat
+          doc.setLineWidth(0.6);
+          doc.line(14, topY + 17, 196, topY + 17);
+          doc.setLineWidth(0.2);
+          doc.line(14, topY + 18, 196, topY + 18);
         }
 
-        // 2. Judul Raport
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "bold");
-        pdf.text("LAPORAN HASIL BELAJAR (RAPOR)", 107.5, topY + 2, { align: "center" });
-        pdf.setFontSize(7.5);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(`${studentRaport.periodeNama} — Tahun Ajaran ${studentRaport.tahunAjaran}`, 107.5, topY + 6, { align: "center" });
-        topY += 9;
+        // Raport Title
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text("LAPORAN HASIL BELAJAR (RAPOR)", 105, 36, { align: "center" });
+        doc.setFontSize(8.5);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Periode: ${studentRaport.periodeNama} | Tahun Ajaran: ${studentRaport.tahunAjaran}`, 105, 41, { align: "center" });
 
-        // 3. Grid Data Siswa
-        pdf.setFontSize(7.5);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(`Nama Peserta Didik : ${student.nama}`, 14, topY + 2);
-        pdf.text(`NISN / NIS          : ${student.nisn || "-"} / ${student.nis || "-"}`, 14, topY + 6);
-        pdf.text(`Nama Sekolah        : ${config.Nama_Sekolah || "SD NEGERI BABAKAN 04"}`, 14, topY + 10);
+        // Identitas Siswa
+        doc.setFontSize(8.5);
+        doc.text(`Nama Peserta Didik : ${student.nama}`, 14, 49);
+        doc.text(`NISN / NIS          : ${student.nisn || '-'} / ${student.nis || '-'}`, 14, 54);
+        doc.text(`Kelas / Fase       : ${student.kelas} / ${studentRaport.fase}`, 130, 49);
+        doc.text(`Semester            : ${studentRaport.semester}`, 130, 54);
 
-        pdf.text(`Kelas / Fase       : ${student.kelas} / ${studentRaport.fase}`, 125, topY + 2);
-        pdf.text(`Semester            : ${studentRaport.semester}`, 125, topY + 6);
-        pdf.text(`Tahun Ajaran        : ${studentRaport.tahunAjaran}`, 125, topY + 10);
-
-        pdf.setDrawColor(180);
-        pdf.setLineWidth(0.2);
-        pdf.line(14, topY + 12.5, 201, topY + 12.5);
-        topY += 15;
-
-        // 4. Tabel A: Capaian Nilai Mapel
-        pdf.setFontSize(7.5);
-        pdf.setFont("helvetica", "bold");
-        pdf.setDrawColor(0);
-        pdf.text("A. Nilai Capaian Kompetensi Pembelajaran", 14, topY);
-
+        // Tabel Nilai (Hanya Mapel yang Dicentang, Diurutkan Sesuai Nomor Urut)
         const mapelOrderLookup = new Map<string, number>(displayMapelNames.map((m, idx) => [m.toLowerCase(), idx]));
         const filteredNilaiMapel = studentRaport.nilaiMapel
           .filter((nm) => mapelOrderLookup.has(nm.mapel.toLowerCase()))
@@ -2623,218 +2170,113 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
           });
         const finalNilaiMapel = filteredNilaiMapel.length > 0 ? filteredNilaiMapel : studentRaport.nilaiMapel;
 
-        const isTight = finalNilaiMapel.length > 8;
-        const fontMapel = isTight ? 6.8 : 7.2;
-        const padMapel = isTight ? 1.0 : 1.2;
+        const tableBody = finalNilaiMapel.map((nm, i) => [
+          i + 1,
+          nm.mapel,
+          nm.nilaiAkhir,
+          nm.capaianKompetensiTinggi || nm.deskripsi || "-"
+        ]);
 
-        const tableBody = finalNilaiMapel.map((nm, i) => {
-          const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
-          const scoreVal = !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80;
-          const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, nm.mapel) && isMatchingClass(b.kelas, student.kelas));
-          const currentTps = effectiveTpBank[nm.mapel] || getFallbackTpsForClassAndMapel(student.kelas, nm.mapel);
-          const freshDesc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems, student.kelas, kktpVal);
-
-          const isTuntas = scoreVal >= kktpVal;
-          const currentTinggi = (nm.capaianKompetensiTinggi || nm.deskripsi || "").trim();
-          const isMismatchWithScore = isTuntas
-            ? !currentTinggi.startsWith("Menunjukkan penguasaan sangat baik dalam")
-            : !currentTinggi.startsWith("Perlu peningkatan konsistensi pemahaman dan pendampingan dalam");
-
-          const displayText = (isMismatchWithScore || shouldRefreshDeskripsi(currentTinggi, freshDesc.tinggi, mapelBankItems?.length || 0))
-            ? freshDesc.tinggi
-            : (currentTinggi || freshDesc.tinggi);
-
-          return [
-            i + 1,
-            nm.mapel,
-            scoreVal,
-            displayText
-          ];
-        });
-
-        autoTable(pdf, {
-          startY: topY + 1.5,
-          margin: { left: 14, right: 14 },
-          head: [["No", "Mata Pelajaran", "Nilai Akhir", "Capaian Kompetensi / Deskripsi Kemajuan Belajar"]],
+        autoTable(doc, {
+          startY: 60,
+          head: [["No", "Mata Pelajaran", "Nilai Akhir", "Capaian Kompetensi / Keterangan"]],
           body: tableBody,
           theme: "grid",
-          headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold", fontSize: 7, halign: "center" },
-          styles: { fontSize: fontMapel, cellPadding: padMapel, overflow: "linebreak" },
+          headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold", fontSize: 8, halign: "center" },
+          styles: { fontSize: 8, cellPadding: 2 },
           columnStyles: {
-            0: { cellWidth: 8, halign: "center" },
-            1: { cellWidth: 43 },
-            2: { cellWidth: 16, halign: "center", fontStyle: "bold" },
-            3: { cellWidth: 120 }
+            0: { cellWidth: 10, halign: "center" },
+            1: { cellWidth: 55 },
+            2: { cellWidth: 20, halign: "center", fontStyle: "bold" },
+            3: { cellWidth: 95 }
           }
         });
 
-        let currentY = (pdf as any).lastAutoTable.finalY + 3;
+        let currentY = (doc as any).lastAutoTable.finalY + 6;
 
-        // 5. Tabel B: Kegiatan Ekstrakurikuler (Tampil Lengkap di Unduh PDF)
-        const hasEkskul = Array.isArray(studentRaport.ekskul) && studentRaport.ekskul.length > 0;
-        if (hasEkskul) {
-          pdf.setFontSize(7.5);
-          pdf.setFont("helvetica", "bold");
-          pdf.text("B. Kegiatan Ekstrakurikuler", 14, currentY);
-
-          const ekskulRows = studentRaport.ekskul.map((ek, idx) => [
-            idx + 1,
-            ek.nama || "-",
-            ek.predikat || "-",
-            ek.keterangan || "-"
-          ]);
-
-          autoTable(pdf, {
-            startY: currentY + 1.5,
-            margin: { left: 14, right: 14 },
-            head: [["No", "Nama Kegiatan", "Predikat", "Keterangan"]],
-            body: ekskulRows,
-            theme: "grid",
-            headStyles: { fillColor: [71, 85, 105], textColor: 255, fontSize: 7, fontStyle: "bold", halign: "center" },
-            styles: { fontSize: isTight ? 6.8 : 7, cellPadding: isTight ? 0.9 : 1 },
-            columnStyles: {
-              0: { cellWidth: 8, halign: "center" },
-              1: { cellWidth: 43 },
-              2: { cellWidth: 16, halign: "center", fontStyle: "bold" },
-              3: { cellWidth: 120 }
-            }
-          });
-
-          currentY = (pdf as any).lastAutoTable.finalY + 3;
-        }
-
-        // 6. Section Ketidakhadiran & Catatan Wali Kelas (Side-by-side untuk efisiensi ruang 1 lembar F4)
-        const labelAtt = hasEkskul ? "C. Ketidakhadiran" : "B. Ketidakhadiran";
-        const labelCatatan = hasEkskul ? "D. Catatan Wali Kelas" : "C. Catatan Wali Kelas";
-
-        pdf.setFontSize(7.5);
-        pdf.setFont("helvetica", "bold");
-        pdf.text(labelAtt, 14, currentY);
-
+        // Absensi & Ekstrakurikuler Table
         const attRows = [
-          ["Sakit (S)", `${studentRaport.kehadiran?.sakit ?? 0} hari`],
-          ["Izin (I)", `${studentRaport.kehadiran?.izin ?? 0} hari`],
-          ["Tanpa Keterangan (A)", `${studentRaport.kehadiran?.alpa ?? 0} hari`]
+          ["Sakit", `${studentRaport.kehadiran.sakit} hari`],
+          ["Izin", `${studentRaport.kehadiran.izin} hari`],
+          ["Tanpa Keterangan (Alpa)", `${studentRaport.kehadiran.alpa} hari`]
         ];
 
-        autoTable(pdf, {
-          startY: currentY + 1.5,
-          margin: { left: 14, right: 131 }, // width 70mm
-          head: [["Jenis Ketidakhadiran", "Jumlah"]],
+        autoTable(doc, {
+          startY: currentY,
+          head: [["Ketidakhadiran", "Jumlah"]],
           body: attRows,
           theme: "grid",
-          headStyles: { fillColor: [71, 85, 105], textColor: 255, fontSize: 7, fontStyle: "bold", halign: "center" },
-          styles: { fontSize: isTight ? 6.8 : 7, cellPadding: isTight ? 0.9 : 1 },
-          columnStyles: {
-            0: { cellWidth: 44 },
-            1: { cellWidth: 26, halign: "center", fontStyle: "bold" }
-          }
+          margin: { left: 15, right: 120 },
+          headStyles: { fillColor: [71, 85, 105], textColor: 255, fontSize: 8, halign: "center" },
+          styles: { fontSize: 8, cellPadding: 1.5 }
         });
-        const attFinalY = (pdf as any).lastAutoTable.finalY;
 
-        // Catatan Wali Kelas di sisi kanan (x=88 to 201 = 113mm width)
-        pdf.setFontSize(7.5);
-        pdf.setFont("helvetica", "bold");
-        pdf.text(labelCatatan, 88, currentY);
+        // Catatan Wali Kelas Box
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.text("Catatan Wali Kelas:", 95, currentY + 3);
+        doc.setFont("helvetica", "normal");
+        const splitCatatan = doc.splitTextToSize(studentRaport.catatanWaliKelas, 100);
+        doc.text(splitCatatan, 95, currentY + 8);
 
-        const boxHeight = Math.max(attFinalY - currentY - 1.5, 17);
-        pdf.setDrawColor(0);
-        pdf.setLineWidth(0.2);
-        pdf.rect(88, currentY + 1.5, 113, boxHeight);
-        pdf.setFontSize(6.8);
-        pdf.setFont("helvetica", "italic");
-        const catatanVal = studentRaport.catatanWaliKelas || "Tingkatkan terus semangat belajar, kedisiplinan, dan prestasimu!";
-        const splitNotes = pdf.splitTextToSize(`"${catatanVal}"`, 109);
-        pdf.text(splitNotes, 90, currentY + 5.5);
-
-        currentY = Math.max(attFinalY, currentY + 1.5 + boxHeight) + 3;
-
-        // 7. Kenaikan Kelas jika Semester Genap
+        // Kenaikan Kelas jika Semester Genap
         if (studentRaport.statusKenaikan) {
-          pdf.setDrawColor(0);
-          pdf.setLineWidth(0.2);
-          pdf.rect(14, currentY, 187, 5.5);
-          pdf.setFontSize(7);
-          pdf.setFont("helvetica", "bold");
-          pdf.text(`Keputusan: Peserta didik dinyatakan ${studentRaport.statusKenaikan.status || "Naik"} (${studentRaport.statusKenaikan.keKelas || ""})`, 16, currentY + 3.8);
-          currentY += 8;
+          doc.setFont("helvetica", "bold");
+          doc.text(`Keputusan: ${studentRaport.statusKenaikan.status} (${studentRaport.statusKenaikan.keKelas || ''})`, 95, currentY + 22);
         }
 
-        // 8. Tanda Tangan Resmi (Posisi pas pada bagian bawah kertas F4 tanpa terpotong)
-        const ttdY = Math.min(Math.max(currentY + 2, 275), 286);
-        pdf.setFontSize(7.5);
-        pdf.setFont("helvetica", "normal");
-
-        const tglDocFormatted = formatTanggalIndonesia(studentRaport.tanggalRaport || tanggalRaport);
-        const tempatDocTtd = studentRaport.tempatTitimangsa || tempatTitimangsa || config.Tempat_Tanda_Tangan || "Kab. Bogor";
+        // Tanda Tangan
+        const ttdY = currentY + 32;
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
 
         if (showTtdKepsek) {
-          // 3 Kolom
-          pdf.text("Mengetahui,", 35, ttdY, { align: "center" });
-          pdf.text("Orang Tua / Wali Siswa,", 35, ttdY + 4, { align: "center" });
-          pdf.text("( .................................... )", 35, ttdY + 20, { align: "center" });
+          // 3 Kolom: Orang Tua (kiri: x=25), Kepala Sekolah (tengah: x=105), Guru Kelas (kanan: x=145)
+          doc.text("Mengetahui,", 25, ttdY);
+          doc.text("Orang Tua / Wali Siswa,", 25, ttdY + 4);
+          doc.text("( .................................... )", 25, ttdY + 22);
 
-          pdf.text("Mengetahui,", 107.5, ttdY, { align: "center" });
-          pdf.text("Kepala Sekolah,", 107.5, ttdY + 4, { align: "center" });
-          pdf.setFont("helvetica", "bold");
-          pdf.text(studentRaport.namaKepsek || config.Nama_Kepala_Sekolah || "SUBUR, S.Pd.SD.", 107.5, ttdY + 18, { align: "center" });
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(6.8);
-          pdf.text(`NIP. ${studentRaport.nipKepsek || config.NIP_Kepala_Sekolah || "197002111993081001"}`, 107.5, ttdY + 22, { align: "center" });
+          doc.text("Mengetahui,", 105, ttdY, { align: "center" });
+          doc.text("Kepala Sekolah,", 105, ttdY + 4, { align: "center" });
+          doc.setFont("helvetica", "bold");
+          doc.text(studentRaport.namaKepsek || config.Nama_Kepala_Sekolah || "SUBUR, S.Pd.SD.", 105, ttdY + 20, { align: "center" });
+          doc.setFont("helvetica", "normal");
+          doc.text(`NIP. ${studentRaport.nipKepsek || config.NIP_Kepala_Sekolah || "197002111993081001"}`, 105, ttdY + 24, { align: "center" });
 
-          pdf.setFontSize(7.5);
-          pdf.text(`${tempatDocTtd}, ${tglDocFormatted}`, 175, ttdY, { align: "center" });
-          pdf.text("Guru Kelas / Wali Kelas,", 175, ttdY + 4, { align: "center" });
-          pdf.setFont("helvetica", "bold");
-          pdf.text(studentRaport.namaGuruWali || currentUser.name || "Eri Iriana Rifai, S.Kom.", 175, ttdY + 18, { align: "center" });
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(6.8);
-          pdf.text(`NIP. ${studentRaport.nipGuruWali || "-"}`, 175, ttdY + 22, { align: "center" });
+          const tglFormatted = formatTanggalIndonesia(studentRaport.tanggalRaport || tanggalRaport);
+          const tempatTtd = studentRaport.tempatTitimangsa || tempatTitimangsa || config.Tempat_Tanda_Tangan || "Kab. Bogor";
+
+          doc.text(`${tempatTtd}, ${tglFormatted}`, 145, ttdY);
+          doc.text("Guru Kelas / Wali Kelas,", 145, ttdY + 4);
+          doc.setFont("helvetica", "bold");
+          doc.text(studentRaport.namaGuruWali || currentUser.name || "Eri Iriana Rifai, S.Kom.", 145, ttdY + 20);
+          doc.setFont("helvetica", "normal");
+          doc.text(`NIP. ${studentRaport.nipGuruWali || "-"}`, 145, ttdY + 24);
         } else {
-          // 2 Kolom
-          pdf.text("Mengetahui,", 45, ttdY, { align: "center" });
-          pdf.text("Orang Tua / Wali Siswa,", 45, ttdY + 4, { align: "center" });
-          pdf.text("( .................................... )", 45, ttdY + 20, { align: "center" });
+          // 2 Kolom Seimbang: Orang Tua (kiri: x=25), Guru Kelas (kanan: x=145)
+          const tglFormatted = formatTanggalIndonesia(studentRaport.tanggalRaport || tanggalRaport);
+          const tempatTtd = studentRaport.tempatTitimangsa || tempatTitimangsa || config.Tempat_Tanda_Tangan || "Kab. Bogor";
 
-          pdf.text(`${tempatDocTtd}, ${tglDocFormatted}`, 165, ttdY, { align: "center" });
-          pdf.text("Guru Kelas / Wali Kelas,", 165, ttdY + 4, { align: "center" });
-          pdf.setFont("helvetica", "bold");
-          pdf.text(studentRaport.namaGuruWali || currentUser.name || "Eri Iriana Rifai, S.Kom.", 165, ttdY + 18, { align: "center" });
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(6.8);
-          pdf.text(`NIP. ${studentRaport.nipGuruWali || "-"}`, 165, ttdY + 22, { align: "center" });
-        }
-      };
+          doc.text("Mengetahui,", 25, ttdY);
+          doc.text("Orang Tua / Wali Siswa,", 25, ttdY + 4);
+          doc.text("( .................................... )", 25, ttdY + 22);
 
-      // Loop seluruh siswa terpilih dan buat halaman sesuai printMode
-      let pageCount = 0;
-      targetStudents.forEach((student) => {
-        const studentRaport = getRaportForStudent(student);
-
-        // 1. Cover Page
-        if (printMode === "full" || printMode === "cover") {
-          if (pageCount > 0) doc.addPage();
-          renderCoverPage(doc, student, studentRaport);
-          pageCount++;
-        }
-
-        // 2. Lembar Nilai Page
-        if (printMode === "full" || printMode === "lembar_nilai") {
-          if (pageCount > 0) doc.addPage();
-          renderLembarNilai(doc, student, studentRaport);
-          pageCount++;
+          doc.text(`${tempatTtd}, ${tglFormatted}`, 145, ttdY);
+          doc.text("Guru Kelas / Wali Kelas,", 145, ttdY + 4);
+          doc.setFont("helvetica", "bold");
+          doc.text(studentRaport.namaGuruWali || currentUser.name || "Eri Iriana Rifai, S.Kom.", 145, ttdY + 20);
+          doc.setFont("helvetica", "normal");
+          doc.text(`NIP. ${studentRaport.nipGuruWali || "-"}`, 145, ttdY + 24);
         }
       });
 
       const cleanName = selectedSiswaId === "all" ? `Semua_Siswa_${selectedKelas}` : targetStudents[0]?.nama.replace(/\s+/g, "_");
-      const modeSuffix = printMode === "cover" ? "_Cover" : printMode === "lembar_nilai" ? "_Nilai" : "_Lengkap";
-      doc.save(`Raport_${cleanName}${modeSuffix}_${currentPeriodeInfo.short}_${selectedTahunAjaran.replace(/\//g, "-")}_F4.pdf`);
-      notifyUnduhSuccess("Dokumen Raport PDF (Kertas F4) berhasil dibuat dan diunduh!");
+      doc.save(`Raport_${cleanName}_${currentPeriodeInfo.short}_${selectedTahunAjaran.replace(/\//g, "-")}.pdf`);
+      notifyUnduhSuccess("Dokumen Raport PDF berhasil dibuat dan diunduh!");
     } catch (err: any) {
       notifyUnduhError("Gagal membuat PDF Raport: " + (err?.message || "Error"));
     }
   };
-
 
   // Trigger Native Print
   const handlePrint = () => {
@@ -3396,27 +2838,20 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="hidden lg:flex items-center space-x-1.5 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 mr-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Standar Kertas: <strong className="text-slate-800 dark:text-slate-200">F4 / Folio (215 × 330 mm)</strong> • 1 Lembar Utuh</span>
-              </div>
-
               <button
                 onClick={handlePrint}
                 className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 cursor-pointer"
-                title="Cetak langsung ke printer atau simpan PDF melalui dialog cetak browser (Kertas F4/Folio)"
               >
                 <Printer className="w-4 h-4" />
-                <span>Cetak Rapor (F4)</span>
+                <span>Cetak via Browser (A4)</span>
               </button>
 
               <button
                 onClick={handleExportPDF}
                 className="inline-flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition active:scale-95 cursor-pointer"
-                title="Unduh file PDF resmi ukuran F4/Folio (215 × 330 mm) 1 lembar utuh lengkap dengan nilai ekskul"
               >
                 <FileText className="w-4 h-4" />
-                <span>Unduh PDF Resmi (F4)</span>
+                <span>Unduh PDF Resmi</span>
               </button>
             </div>
           </div>
@@ -3433,279 +2868,259 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
               </p>
             </div>
           ) : (
-            <div className="space-y-8 print:space-y-0">
-              {(selectedSiswaId === "all" ? classStudents : [selectedStudentData]).map((student) => {
+            <div className="space-y-8">
+              {(selectedSiswaId === "all" ? classStudents : [selectedStudentData]).map((student, sIdx) => {
                 if (!student) return null;
                 const studentRaport = getRaportForStudent(student);
 
                 return (
-                  <React.Fragment key={student.id}>
-                    {/* ============================================================== */}
-                    {/* HALAMAN 1: COVER RAPORT (1 Lembar Utuh Kertas F4)            */}
-                    {/* ============================================================== */}
+                  <div 
+                    key={student.id} 
+                    className={`bg-white text-black p-8 sm:p-12 rounded-2xl shadow-md border border-slate-200 mx-auto max-w-[210mm] min-h-[297mm] print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none ${
+                      sIdx > 0 ? "print:break-before-page" : ""
+                    }`}
+                  >
+                    {/* COVER PAGE (Rendered if mode is full or cover) */}
                     {(printMode === "full" || printMode === "cover") && (
-                      <div className="raport-f4-page bg-white text-black p-6 sm:p-8 rounded-2xl shadow-md border border-slate-200 mx-auto w-full max-w-[215mm] min-h-[330mm] print:shadow-none print:border-none print:p-0 print:m-0 print:w-[195mm] print:max-w-[195mm] print:min-h-[310mm] print:max-h-[314mm] print:overflow-hidden print:break-after-page mb-8 print:mb-0 flex flex-col justify-between">
-                        <div className="flex flex-col justify-between h-full min-h-[305mm] max-h-[312mm] border-4 border-double border-slate-900 p-6 sm:p-8 text-center box-border">
-                          {/* Top School Header */}
-                          <div className="space-y-1.5 pt-2">
-                            <p className="text-xs font-bold uppercase tracking-widest text-slate-700">
-                              {config.Pemerintah || "PEMERINTAH KABUPATEN BOGOR"}
+                      <div className="flex flex-col justify-between min-h-[260mm] border-4 border-double border-slate-800 p-8 text-center mb-8 print:mb-0 print:break-after-page">
+                        {/* Top School Header */}
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-bold uppercase tracking-widest text-slate-700">
+                            {config.Pemerintah || "PEMERINTAH KABUPATEN BOGOR"}
+                          </p>
+                          <p className="text-xs font-bold uppercase tracking-widest text-slate-700">
+                            {config.Dinas || "DINAS PENDIDIKAN"}
+                          </p>
+                          <h2 className="text-xl sm:text-2xl font-black tracking-wider uppercase text-slate-900 mt-1">
+                            {config.Nama_Sekolah || "SD NEGERI BABAKAN 04"}
+                          </h2>
+                          <div className="pt-2">
+                            <h3 className="text-base sm:text-lg font-bold tracking-wider uppercase text-slate-800">
+                              LAPORAN HASIL BELAJAR PESERTA DIDIK
+                            </h3>
+                            <p className="text-xs sm:text-sm font-semibold text-slate-600 uppercase">
+                              ( RAPOR KURIKULUM MERDEKA )
                             </p>
-                            <p className="text-xs font-bold uppercase tracking-widest text-slate-700">
-                              {config.Dinas || "DINAS PENDIDIKAN"}
+                          </div>
+                        </div>
+
+                        {/* Middle Logo & Emblem */}
+                        <div className="my-8 flex flex-col items-center justify-center space-y-4">
+                          {config.Logo_Kiri ? (
+                            <img 
+                              src={config.Logo_Kiri} 
+                              alt="Logo Sekolah" 
+                              className="w-28 h-28 object-contain"
+                            />
+                          ) : (
+                            <div className="w-28 h-28 rounded-full border-4 border-blue-900 flex items-center justify-center bg-blue-50 text-blue-900 shadow-inner">
+                              <GraduationCap className="w-16 h-16" />
+                            </div>
+                          )}
+                          <div className="space-y-1">
+                            <h3 className="text-lg font-bold text-slate-800 uppercase tracking-wide">
+                              {studentRaport.periodeNama}
+                            </h3>
+                            <p className="text-xs font-semibold text-slate-600">
+                              Tahun Ajaran {studentRaport.tahunAjaran}
                             </p>
-                            <h2 className="text-xl sm:text-2xl font-black tracking-wider uppercase text-slate-900 mt-1">
-                              {config.Nama_Sekolah || "SD NEGERI BABAKAN 04"}
-                            </h2>
-                            <div className="pt-2">
-                              <h3 className="text-base sm:text-lg font-bold tracking-wider uppercase text-slate-800">
-                                LAPORAN HASIL BELAJAR PESERTA DIDIK
-                              </h3>
-                              <p className="text-xs sm:text-sm font-semibold text-slate-600 uppercase">
-                                ( RAPOR KURIKULUM MERDEKA )
-                              </p>
-                            </div>
                           </div>
+                        </div>
 
-                          {/* Middle Logo & Emblem */}
-                          <div className="my-6 flex flex-col items-center justify-center space-y-4">
-                            {config.Logo_Kiri ? (
-                              <img 
-                                src={config.Logo_Kiri} 
-                                alt="Logo Sekolah" 
-                                className="w-28 h-28 object-contain"
-                              />
-                            ) : (
-                              <div className="w-28 h-28 rounded-full border-4 border-blue-900 flex items-center justify-center bg-blue-50 text-blue-900 shadow-inner">
-                                <GraduationCap className="w-16 h-16" />
-                              </div>
-                            )}
-                            <div className="space-y-1">
-                              <h3 className="text-lg font-bold text-slate-800 uppercase tracking-wide">
-                                {studentRaport.periodeNama}
-                              </h3>
-                              <p className="text-xs font-semibold text-slate-600">
-                                Tahun Ajaran {studentRaport.tahunAjaran}
-                              </p>
-                            </div>
+                        {/* Student Identitas Box */}
+                        <div className="max-w-md mx-auto w-full border border-slate-400 p-4 rounded-lg bg-slate-50/50 space-y-2 text-left text-xs sm:text-sm">
+                          <div className="flex">
+                            <span className="w-36 font-semibold text-slate-600">Nama Siswa</span>
+                            <span className="mr-2">:</span>
+                            <strong className="font-bold text-slate-900 uppercase">{student.nama}</strong>
                           </div>
+                          <div className="flex">
+                            <span className="w-36 font-semibold text-slate-600">NISN / NIS</span>
+                            <span className="mr-2">:</span>
+                            <span className="font-semibold text-slate-800">{student.nisn || "-"} / {student.nis || "-"}</span>
+                          </div>
+                          <div className="flex">
+                            <span className="w-36 font-semibold text-slate-600">Kelas / Fase</span>
+                            <span className="mr-2">:</span>
+                            <span className="font-semibold text-slate-800">{student.kelas} / {studentRaport.fase}</span>
+                          </div>
+                          <div className="flex">
+                            <span className="w-36 font-semibold text-slate-600">Nama Sekolah</span>
+                            <span className="mr-2">:</span>
+                            <span className="font-bold text-slate-900">{config.Nama_Sekolah || "SD NEGERI BABAKAN 04"}</span>
+                          </div>
+                          <div className="flex">
+                            <span className="w-36 font-semibold text-slate-600">NPSN</span>
+                            <span className="mr-2">:</span>
+                            <span className="font-semibold text-slate-800">{config.NPSN || "20200889"}</span>
+                          </div>
+                        </div>
 
-                          {/* Student Identitas Box */}
-                          <div className="max-w-md mx-auto w-full border border-slate-400 p-4 rounded-lg bg-slate-50/50 space-y-2 text-left text-xs sm:text-sm">
-                            <div className="flex">
-                              <span className="w-36 font-semibold text-slate-600">Nama Siswa</span>
-                              <span className="mr-2">:</span>
-                              <strong className="font-bold text-slate-900 uppercase">{student.nama}</strong>
-                            </div>
-                            <div className="flex">
-                              <span className="w-36 font-semibold text-slate-600">NISN / NIS</span>
-                              <span className="mr-2">:</span>
-                              <span className="font-semibold text-slate-800">{student.nisn || "-"} / {student.nis || "-"}</span>
-                            </div>
-                            <div className="flex">
-                              <span className="w-36 font-semibold text-slate-600">Kelas / Fase</span>
-                              <span className="mr-2">:</span>
-                              <span className="font-semibold text-slate-800">{student.kelas} / {studentRaport.fase}</span>
-                            </div>
-                            <div className="flex">
-                              <span className="w-36 font-semibold text-slate-600">Nama Sekolah</span>
-                              <span className="mr-2">:</span>
-                              <span className="font-bold text-slate-900">{config.Nama_Sekolah || "SD NEGERI BABAKAN 04"}</span>
-                            </div>
-                            <div className="flex">
-                              <span className="w-36 font-semibold text-slate-600">NPSN</span>
-                              <span className="mr-2">:</span>
-                              <span className="font-semibold text-slate-800">{config.NPSN || "20200889"}</span>
-                            </div>
-                          </div>
-
-                          {/* Footer Cover */}
-                          <div className="pb-2 space-y-1 text-xs text-slate-600">
-                            <p className="font-bold text-slate-800 uppercase">{config.Nama_Sekolah || "SD NEGERI BABAKAN 04"}</p>
-                            <p>{config.Alamat_Sekolah || "Kp. Babakan Kulon RT.05/02 Desa Babakan Kec. Ciseeng Kab. Bogor"}</p>
-                          </div>
+                        {/* Footer Cover */}
+                        <div className="pt-6 space-y-1 text-xs text-slate-600">
+                          <p className="font-bold text-slate-800 uppercase">{config.Nama_Sekolah || "SD NEGERI BABAKAN 04"}</p>
+                          <p>{config.Alamat_Sekolah || "Kp. Babakan Kulon RT.05/02 Desa Babakan Kec. Ciseeng Kab. Bogor"}</p>
                         </div>
                       </div>
                     )}
 
-                    {/* ============================================================== */}
-                    {/* HALAMAN 2: LEMBAR NILAI CAPAIAN (1 Lembar Utuh Kertas F4)     */}
-                    {/* ============================================================== */}
+                    {/* LEMBAR NILAI CAPAIAN HASIL BELAJAR */}
                     {(printMode === "full" || printMode === "lembar_nilai") && (
-                      <div className="raport-f4-page bg-white text-black p-6 sm:p-8 rounded-2xl shadow-md border border-slate-200 mx-auto w-full max-w-[215mm] min-h-[330mm] print:shadow-none print:border-none print:p-0 print:m-0 print:w-[195mm] print:max-w-[195mm] print:min-h-[310mm] print:max-h-[314mm] print:overflow-hidden print:break-after-page mb-8 print:mb-0 flex flex-col justify-between space-y-3 print:space-y-1.5">
-                        <div>
-                          {/* Kop Surat Resmi */}
-                          {showKopSekolah && (
-                            <KopSuratDinas 
-                              config={config} 
-                              showDoubleLine={true} 
-                              className="mb-2 print:mb-0.5"
-                            />
-                          )}
+                      <div className="space-y-6">
+                        {/* Kop Surat Resmi */}
+                        {showKopSekolah && (
+                          <KopSuratDinas 
+                            config={config} 
+                            showDoubleLine={true} 
+                            className="mb-3"
+                          />
+                        )}
 
-                          {/* Title Laporan */}
-                          <div className="text-center space-y-0.5 print:space-y-0 mb-2 print:mb-1">
-                            <h4 className="text-sm font-bold uppercase tracking-wider underline print:text-xs">
-                              LAPORAN HASIL BELAJAR (RAPOR)
-                            </h4>
-                            <p className="text-[11px] font-semibold text-slate-700 print:text-[9.5px]">
-                              {studentRaport.periodeNama} — Tahun Ajaran {studentRaport.tahunAjaran}
-                            </p>
-                          </div>
-
-                          {/* Header Data Siswa */}
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs print:text-[9.5px] border-b border-slate-300 pb-2 print:pb-1 mb-2.5 print:mb-1.5">
-                            <div className="flex"><span className="w-32 font-semibold">Nama Peserta Didik</span><span className="mr-2">:</span><strong className="uppercase">{student.nama}</strong></div>
-                            <div className="flex"><span className="w-32 font-semibold">Kelas / Fase</span><span className="mr-2">:</span><span>{student.kelas} / {studentRaport.fase}</span></div>
-                            <div className="flex"><span className="w-32 font-semibold">NISN / NIS</span><span className="mr-2">:</span><span>{student.nisn || "-"} / {student.nis || "-"}</span></div>
-                            <div className="flex"><span className="w-32 font-semibold">Semester</span><span className="mr-2">:</span><span>{studentRaport.semester}</span></div>
-                            <div className="flex"><span className="w-32 font-semibold">Nama Sekolah</span><span className="mr-2">:</span><span>{config.Nama_Sekolah || "SD NEGERI BABAKAN 04"}</span></div>
-                            <div className="flex"><span className="w-32 font-semibold">Tahun Ajaran</span><span className="mr-2">:</span><span>{studentRaport.tahunAjaran}</span></div>
-                          </div>
-
-                          {/* Tabel A: Capaian Hasil Belajar */}
-                          <div className="space-y-1 print:space-y-0.5 mb-2.5 print:mb-1.5">
-                            <h5 className="text-xs print:text-[10px] font-bold uppercase text-slate-900 tracking-wide">
-                              A. Nilai Capaian Kompetensi Pembelajaran
-                            </h5>
-                            <div className="overflow-x-auto">
-                              <table className="raport-print-table w-full text-left text-xs print:text-[9.2px] border border-collapse border-black leading-tight">
-                                <thead>
-                                  <tr className="bg-slate-100 text-slate-900 border-b border-black">
-                                    <th className="p-1.5 print:py-0.5 print:px-1 border border-black text-center w-8">No</th>
-                                    <th className="p-1.5 print:py-0.5 print:px-1 border border-black w-44">Mata Pelajaran</th>
-                                    <th className="p-1.5 print:py-0.5 print:px-1 border border-black text-center w-14">Nilai Akhir</th>
-                                    <th className="p-1.5 print:py-0.5 print:px-1 border border-black">Capaian Kompetensi / Deskripsi Kemajuan Belajar</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {(() => {
-                                    const mapelOrderLookup = new Map<string, number>(displayMapelNames.map((m, idx) => [m.toLowerCase(), idx]));
-                                    const filtered = studentRaport.nilaiMapel
-                                      .filter((nm) => mapelOrderLookup.has(nm.mapel.toLowerCase()))
-                                      .sort((a, b) => {
-                                        const orderA = mapelOrderLookup.get(a.mapel.toLowerCase()) ?? 999;
-                                        const orderB = mapelOrderLookup.get(b.mapel.toLowerCase()) ?? 999;
-                                        return orderA - orderB;
-                                      });
-                                    const toRender = filtered.length > 0 ? filtered : studentRaport.nilaiMapel;
-                                    return toRender.map((nm, idx) => {
-                                      const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
-                                      const scoreVal = !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80;
-                                      const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, nm.mapel) && isMatchingClass(b.kelas, student.kelas));
-                                      const currentTps = effectiveTpBank[nm.mapel] || getFallbackTpsForClassAndMapel(student.kelas, nm.mapel);
-                                      const freshDesc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems, student.kelas, kktpVal);
-
-                                      const isTuntas = scoreVal >= kktpVal;
-                                      const currentTinggi = (nm.capaianKompetensiTinggi || nm.deskripsi || "").trim();
-                                      const isMismatchWithScore = isTuntas
-                                        ? !currentTinggi.startsWith("Menunjukkan penguasaan sangat baik dalam")
-                                        : !currentTinggi.startsWith("Perlu peningkatan konsistensi pemahaman dan pendampingan dalam");
-
-                                      const displayText = (isMismatchWithScore || shouldRefreshDeskripsi(currentTinggi, freshDesc.tinggi, mapelBankItems?.length || 0))
-                                        ? freshDesc.tinggi
-                                        : (currentTinggi || freshDesc.tinggi);
-
-                                      return (
-                                        <tr key={idx} className="border-b border-black hover:bg-slate-50/50">
-                                          <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-center font-semibold">{idx + 1}</td>
-                                          <td className="p-1.5 print:py-0.5 print:px-1 border border-black font-semibold text-slate-900">{nm.mapel}</td>
-                                          <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-center font-bold text-slate-900">
-                                            <span className={scoreVal < kktpVal ? "text-amber-700 dark:text-amber-400 font-extrabold" : "text-slate-900"}>
-                                              {scoreVal}
-                                            </span>
-                                          </td>
-                                          <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-[10.5px] print:text-[8.8px] leading-snug text-slate-800">
-                                            <p>{displayText}</p>
-                                          </td>
-                                        </tr>
-                                      );
-                                    });
-                                  })()}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-
-                          {/* Tabel B: Ekstrakurikuler */}
-                          {studentRaport.ekskul && studentRaport.ekskul.length > 0 && (
-                            <div className="space-y-1 print:space-y-0.5 mb-2.5 print:mb-1.5">
-                              <h5 className="text-xs print:text-[10px] font-bold uppercase text-slate-900 tracking-wide">
-                                B. Kegiatan Ekstrakurikuler
-                              </h5>
-                              <table className="raport-print-table w-full text-left text-xs print:text-[9.2px] border border-collapse border-black leading-tight">
-                                <thead>
-                                  <tr className="bg-slate-100 text-slate-900 border-b border-black">
-                                    <th className="p-1.5 print:py-0.5 print:px-1 border border-black text-center w-8">No</th>
-                                    <th className="p-1.5 print:py-0.5 print:px-1 border border-black w-44">Nama Kegiatan</th>
-                                    <th className="p-1.5 print:py-0.5 print:px-1 border border-black text-center w-14">Predikat</th>
-                                    <th className="p-1.5 print:py-0.5 print:px-1 border border-black">Keterangan</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {studentRaport.ekskul.map((ek, idx) => (
-                                    <tr key={idx} className="border-b border-black">
-                                      <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-center">{idx + 1}</td>
-                                      <td className="p-1.5 print:py-0.5 print:px-1 border border-black font-semibold">{ek.nama}</td>
-                                      <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-center font-bold">{ek.predikat}</td>
-                                      <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-[10.5px] print:text-[8.8px]">{ek.keterangan}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-
-                          {/* Section C & D: Ketidakhadiran & Catatan (Side-by-side untuk 1 Lembar F4 Pas) */}
-                          <div className="grid grid-cols-12 gap-3 print:gap-2 mb-2 print:mb-1 items-start">
-                            {/* Absensi (5 Kolom) */}
-                            <div className="col-span-12 sm:col-span-5 space-y-1 print:space-y-0.5">
-                              <h5 className="text-xs print:text-[10px] font-bold uppercase text-slate-900 tracking-wide">
-                                {studentRaport.ekskul && studentRaport.ekskul.length > 0 ? "C" : "B"}. Ketidakhadiran
-                              </h5>
-                              <table className="raport-print-table w-full text-xs print:text-[9.2px] border border-collapse border-black leading-tight">
-                                <tbody>
-                                  <tr className="border-b border-black">
-                                    <td className="p-1.5 print:py-0.5 print:px-1 border border-black">Sakit (S)</td>
-                                    <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-center font-bold">{studentRaport.kehadiran?.sakit ?? 0} hari</td>
-                                  </tr>
-                                  <tr className="border-b border-black">
-                                    <td className="p-1.5 print:py-0.5 print:px-1 border border-black">Izin (I)</td>
-                                    <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-center font-bold">{studentRaport.kehadiran?.izin ?? 0} hari</td>
-                                  </tr>
-                                  <tr>
-                                    <td className="p-1.5 print:py-0.5 print:px-1 border border-black">Tanpa Keterangan (A)</td>
-                                    <td className="p-1.5 print:py-0.5 print:px-1 border border-black text-center font-bold">{studentRaport.kehadiran?.alpa ?? 0} hari</td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                            </div>
-
-                            {/* Catatan Wali Kelas (7 Kolom) */}
-                            <div className="col-span-12 sm:col-span-7 space-y-1 print:space-y-0.5">
-                              <h5 className="text-xs print:text-[10px] font-bold uppercase text-slate-900 tracking-wide">
-                                {studentRaport.ekskul && studentRaport.ekskul.length > 0 ? "D" : "C"}. Catatan Wali Kelas
-                              </h5>
-                              <div className="p-2 print:p-1.5 border border-black text-xs print:text-[9px] min-h-[64px] print:min-h-[50px] leading-relaxed text-slate-800 italic bg-slate-50/40 rounded-sm">
-                                "{studentRaport.catatanWaliKelas || "Tingkatkan terus semangat belajar, kedisiplinan, dan prestasimu!"}"
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Keputusan Kenaikan Kelas jika Semester Genap */}
-                          {studentRaport.statusKenaikan && (
-                            <div className="p-2 print:p-1 border border-black rounded-sm bg-slate-50 text-xs print:text-[9.5px] mb-2 print:mb-1">
-                              <span className="font-bold uppercase mr-1.5">Keputusan Akhir Tahun:</span>
-                              <span className="font-bold text-blue-900">
-                                Berdasarkan pencapaian kompetensi, peserta didik dinyatakan: {studentRaport.statusKenaikan.status} ({studentRaport.statusKenaikan.keKelas || ""})
-                              </span>
-                            </div>
-                          )}
+                        {/* Title Laporan */}
+                        <div className="text-center space-y-1">
+                          <h4 className="text-sm font-bold uppercase tracking-wider underline">
+                            LAPORAN HASIL BELAJAR (RAPOR)
+                          </h4>
+                          <p className="text-[11px] font-semibold text-slate-700">
+                            {studentRaport.periodeNama} — Tahun Ajaran {studentRaport.tahunAjaran}
+                          </p>
                         </div>
 
-                        {/* Area Tanda Tangan Resmi (Posisi pas pada bagian bawah kertas F4) */}
-                        <div className={`pt-2 print:pt-1 ${showTtdKepsek ? "grid grid-cols-3 gap-2" : "flex justify-between px-8"} text-center text-xs print:text-[9.5px] text-slate-900`}>
-                          <div className="space-y-10 print:space-y-6">
+                        {/* Header Data Siswa */}
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-slate-800 border-b border-slate-300 pb-3">
+                          <div className="flex"><span className="w-32 font-semibold">Nama Peserta Didik</span><span className="mr-2">:</span><strong className="uppercase">{student.nama}</strong></div>
+                          <div className="flex"><span className="w-32 font-semibold">Kelas / Fase</span><span className="mr-2">:</span><span>{student.kelas} / {studentRaport.fase}</span></div>
+                          <div className="flex"><span className="w-32 font-semibold">NISN / NIS</span><span className="mr-2">:</span><span>{student.nisn || "-"} / {student.nis || "-"}</span></div>
+                          <div className="flex"><span className="w-32 font-semibold">Semester</span><span className="mr-2">:</span><span>{studentRaport.semester}</span></div>
+                          <div className="flex"><span className="w-32 font-semibold">Nama Sekolah</span><span className="mr-2">:</span><span>{config.Nama_Sekolah || "SD NEGERI BABAKAN 04"}</span></div>
+                          <div className="flex"><span className="w-32 font-semibold">Tahun Ajaran</span><span className="mr-2">:</span><span>{studentRaport.tahunAjaran}</span></div>
+                        </div>
+
+                        {/* Tabel Capaian Hasil Belajar */}
+                        <div className="space-y-2">
+                          <h5 className="text-xs font-bold uppercase text-slate-900 tracking-wide">
+                            A. Nilai Capaian Kompetensi Pembelajaran
+                          </h5>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs border border-collapse border-black">
+                              <thead>
+                                <tr className="bg-slate-100 text-slate-900 border-b border-black">
+                                  <th className="p-2 border border-black text-center w-8">No</th>
+                                  <th className="p-2 border border-black w-48">Mata Pelajaran</th>
+                                  <th className="p-2 border border-black text-center w-16">Nilai Akhir</th>
+                                  <th className="p-2 border border-black">Capaian Kompetensi / Deskripsi Kemajuan Belajar</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(() => {
+                                  const mapelOrderLookup = new Map<string, number>(displayMapelNames.map((m, idx) => [m.toLowerCase(), idx]));
+                                  const filtered = studentRaport.nilaiMapel
+                                    .filter((nm) => mapelOrderLookup.has(nm.mapel.toLowerCase()))
+                                    .sort((a, b) => {
+                                      const orderA = mapelOrderLookup.get(a.mapel.toLowerCase()) ?? 999;
+                                      const orderB = mapelOrderLookup.get(b.mapel.toLowerCase()) ?? 999;
+                                      return orderA - orderB;
+                                    });
+                                  const toRender = filtered.length > 0 ? filtered : studentRaport.nilaiMapel;
+                                  return toRender.map((nm, idx) => (
+                                    <tr key={idx} className="border-b border-black hover:bg-slate-50/50">
+                                      <td className="p-2 border border-black text-center font-semibold">{idx + 1}</td>
+                                      <td className="p-2 border border-black font-semibold text-slate-900">{nm.mapel}</td>
+                                      <td className="p-2 border border-black text-center font-bold text-slate-900">{nm.nilaiAkhir}</td>
+                                      <td className="p-2 border border-black text-[11px] leading-relaxed text-slate-800">
+                                        <p>{nm.capaianKompetensiTinggi || nm.deskripsi}</p>
+                                        {nm.capaianKompetensiPerluBimbingan && (
+                                          <p className="mt-1 text-slate-600 italic">
+                                            * {nm.capaianKompetensiPerluBimbingan}
+                                          </p>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  ));
+                                })()}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        {/* B. Ekstrakurikuler */}
+                        {studentRaport.ekskul && studentRaport.ekskul.length > 0 && (
+                          <div className="space-y-2">
+                            <h5 className="text-xs font-bold uppercase text-slate-900 tracking-wide">
+                              B. Kegiatan Ekstrakurikuler
+                            </h5>
+                            <table className="w-full text-left text-xs border border-collapse border-black">
+                              <thead>
+                                <tr className="bg-slate-100 text-slate-900 border-b border-black">
+                                  <th className="p-2 border border-black text-center w-8">No</th>
+                                  <th className="p-2 border border-black w-48">Nama Kegiatan</th>
+                                  <th className="p-2 border border-black text-center w-16">Predikat</th>
+                                  <th className="p-2 border border-black">Keterangan</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {studentRaport.ekskul.map((ek, idx) => (
+                                  <tr key={idx} className="border-b border-black">
+                                    <td className="p-2 border border-black text-center">{idx + 1}</td>
+                                    <td className="p-2 border border-black font-semibold">{ek.nama}</td>
+                                    <td className="p-2 border border-black text-center font-bold">{ek.predikat}</td>
+                                    <td className="p-2 border border-black text-[11px]">{ek.keterangan}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        {/* C. Ketidakhadiran & Catatan */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                          {/* Absensi */}
+                          <div className="space-y-1.5">
+                            <h5 className="text-xs font-bold uppercase text-slate-900 tracking-wide">
+                              C. Ketidakhadiran
+                            </h5>
+                            <table className="w-full text-xs border border-collapse border-black">
+                              <tbody>
+                                <tr className="border-b border-black">
+                                  <td className="p-2 border border-black w-44">Sakit (S)</td>
+                                  <td className="p-2 border border-black text-center font-bold">{studentRaport.kehadiran.sakit} hari</td>
+                                </tr>
+                                <tr className="border-b border-black">
+                                  <td className="p-2 border border-black">Izin (I)</td>
+                                  <td className="p-2 border border-black text-center font-bold">{studentRaport.kehadiran.izin} hari</td>
+                                </tr>
+                                <tr>
+                                  <td className="p-2 border border-black">Tanpa Keterangan (A)</td>
+                                  <td className="p-2 border border-black text-center font-bold">{studentRaport.kehadiran.alpa} hari</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Catatan Wali Kelas */}
+                          <div className="space-y-1.5">
+                            <h5 className="text-xs font-bold uppercase text-slate-900 tracking-wide">
+                              D. Catatan Wali Kelas
+                            </h5>
+                            <div className="p-3 border border-black text-xs min-h-[90px] leading-relaxed text-slate-800 italic bg-slate-50/40 rounded-sm">
+                              "{studentRaport.catatanWaliKelas}"
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Keputusan Kenaikan Kelas jika Semester Genap */}
+                        {studentRaport.statusKenaikan && (
+                          <div className="p-3 border-2 border-black rounded-md bg-slate-50 text-xs">
+                            <span className="font-bold uppercase mr-2">Keputusan Akhir Tahun:</span>
+                            <span className="font-bold text-blue-900">
+                              Berdasarkan hasil pencapaian kompetensi, peserta didik dinyatakan: {studentRaport.statusKenaikan.status} ({studentRaport.statusKenaikan.keKelas || ''})
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Area Tanda Tangan */}
+                        <div className={`pt-6 ${showTtdKepsek ? "grid grid-cols-3 gap-2" : "flex justify-between px-8"} text-center text-xs text-slate-900`}>
+                          <div className="space-y-16">
                             <div>
                               <p>Mengetahui,</p>
                               <p className="font-semibold">Orang Tua / Wali Siswa</p>
@@ -3716,19 +3131,19 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                           </div>
 
                           {showTtdKepsek && (
-                            <div className="space-y-10 print:space-y-6">
+                            <div className="space-y-16">
                               <div>
                                 <p>Mengetahui,</p>
                                 <p className="font-semibold">Kepala Sekolah</p>
                               </div>
                               <div>
                                 <p className="font-bold underline">{studentRaport.namaKepsek || config.Nama_Kepala_Sekolah || "SUBUR, S.Pd.SD."}</p>
-                                <p className="text-[10px] print:text-[8px]">NIP. {studentRaport.nipKepsek || config.NIP_Kepala_Sekolah || "197002111993081001"}</p>
+                                <p className="text-[10px]">NIP. {studentRaport.nipKepsek || config.NIP_Kepala_Sekolah || "197002111993081001"}</p>
                               </div>
                             </div>
                           )}
 
-                          <div className="space-y-10 print:space-y-6">
+                          <div className="space-y-16">
                             <div>
                               <p>
                                 {studentRaport.tempatTitimangsa || tempatTitimangsa || config.Tempat_Tanda_Tangan || "Kab. Bogor"},{" "}
@@ -3738,13 +3153,13 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                             </div>
                             <div>
                               <p className="font-bold underline">{studentRaport.namaGuruWali || currentUser.name || "Eri Iriana Rifai, S.Kom."}</p>
-                              <p className="text-[10px] print:text-[8px]">NIP. {studentRaport.nipGuruWali || "-"}</p>
+                              <p className="text-[10px]">NIP. {studentRaport.nipGuruWali || "-"}</p>
                             </div>
                           </div>
                         </div>
                       </div>
                     )}
-                  </React.Fragment>
+                  </div>
                 );
               })}
             </div>
@@ -3973,7 +3388,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                             
                             const nm = mOriginalIdx !== -1 
                               ? studentRaport.nilaiMapel[mOriginalIdx] 
-                              : { mapel: mName, kktp: 75, nilaiAkhir: 80, capaianKompetensiTinggi: "", capaianKompetensiPerluBimbingan: "", deskripsi: "" };
+                              : { mapel: mName, nilaiAkhir: 80, capaianKompetensiTinggi: "", capaianKompetensiPerluBimbingan: "", deskripsi: "" };
 
                             const currentTps = effectiveTpBank[mName] || DEFAULT_TP_TEMPLATES[mName] || [];
 
@@ -3996,17 +3411,17 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                       let currentTinggi = nm.capaianKompetensiTinggi || nm.deskripsi || "";
                                       let currentBimbingan = nm.capaianKompetensiPerluBimbingan || "";
 
-                                      const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
-                                      const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, mName) && isMatchingClass(b.kelas, s.kelas));
-                                      const desc = generateFallbackDeskripsiFromTp(mName, clampedVal, currentTps, mapelBankItems, s.kelas, kktpVal);
-                                      currentTinggi = desc.tinggi;
-                                      currentBimbingan = desc.perluBimbingan;
+                                      if (autoSyncTpWithNilai || !currentTinggi) {
+                                        const mapelBankItems = bankTpList?.filter((b) => b.mapel.toLowerCase() === mName.toLowerCase());
+                                        const desc = generateFallbackDeskripsiFromTp(mName, clampedVal, currentTps, mapelBankItems);
+                                        currentTinggi = desc.tinggi;
+                                        currentBimbingan = desc.perluBimbingan;
+                                      }
 
                                       updatedNilaiMapel[targetIdx] = {
                                         ...nm,
                                         mapel: mName,
                                         nilaiAkhir: clampedVal,
-                                        kktp: kktpVal,
                                         capaianKompetensiTinggi: currentTinggi,
                                         capaianKompetensiPerluBimbingan: currentBimbingan,
                                         deskripsi: currentTinggi
@@ -4030,7 +3445,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                         isOpen: true,
                                         studentId: s.id,
                                         studentName: s.nama,
-                                        studentNilai: !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80,
+                                        studentNilai: typeof nm.nilaiAkhir === "number" ? nm.nilaiAkhir : 80,
                                         mapel: mName,
                                         targetIdx,
                                         targetField: "tinggi"
@@ -4045,17 +3460,14 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const scoreVal = !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80;
-                                      const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
-                                      const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, mName) && isMatchingClass(b.kelas, s.kelas));
-                                      const desc = generateFallbackDeskripsiFromTp(mName, scoreVal, currentTps, mapelBankItems, s.kelas, kktpVal);
+                                      const scoreVal = typeof nm.nilaiAkhir === "number" ? nm.nilaiAkhir : 80;
+                                      const mapelBankItems = bankTpList?.filter((b) => b.mapel.toLowerCase() === mName.toLowerCase());
+                                      const desc = generateFallbackDeskripsiFromTp(mName, scoreVal, currentTps, mapelBankItems);
                                       const targetIdx = mOriginalIdx !== -1 ? mOriginalIdx : studentRaport.nilaiMapel.length;
                                       const updatedNilaiMapel = [...studentRaport.nilaiMapel];
                                       updatedNilaiMapel[targetIdx] = {
                                         ...nm,
                                         mapel: mName,
-                                        nilaiAkhir: scoreVal,
-                                        kktp: kktpVal,
                                         capaianKompetensiTinggi: desc.tinggi,
                                         capaianKompetensiPerluBimbingan: desc.perluBimbingan,
                                         deskripsi: desc.tinggi
@@ -4081,93 +3493,58 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                   </button>
                                 </div>
 
-                                {(() => {
-                                  const cellScoreVal = !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80;
-                                  const cellKktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
-                                  const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, mName) && isMatchingClass(b.kelas, s.kelas));
-                                  const freshDesc = generateFallbackDeskripsiFromTp(
-                                    mName,
-                                    cellScoreVal,
-                                    currentTps,
-                                    mapelBankItems,
-                                    s.kelas,
-                                    cellKktpVal
-                                  );
+                                {/* Capaian Tertinggi Box */}
+                                <div className="space-y-0.5">
+                                  <span className="block text-[9.5px] font-bold text-slate-900 dark:text-slate-100">
+                                    Capaian Tertinggi:
+                                  </span>
+                                  <textarea
+                                    rows={3}
+                                    value={nm.capaianKompetensiTinggi || nm.deskripsi || ""}
+                                    onChange={(e) => {
+                                      const targetIdx = mOriginalIdx !== -1 ? mOriginalIdx : studentRaport.nilaiMapel.length;
+                                      const updatedNilaiMapel = [...studentRaport.nilaiMapel];
+                                      updatedNilaiMapel[targetIdx] = {
+                                        ...nm,
+                                        mapel: mName,
+                                        capaianKompetensiTinggi: e.target.value,
+                                        deskripsi: e.target.value
+                                      };
+                                      handleUpdateRaportRecord({
+                                        ...studentRaport,
+                                        nilaiMapel: updatedNilaiMapel
+                                      });
+                                    }}
+                                    className="w-full text-[10px] p-1.5 rounded border border-slate-300 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-600 leading-relaxed resize-y"
+                                    placeholder="Capaian Tertinggi: Diisi otomatis sesuai nilai dan keterangan diambil dari bank TP atau generate AI..."
+                                  />
+                                </div>
 
-                                  const isTuntas = cellScoreVal >= cellKktpVal;
-                                  const currentTinggiVal = (nm.capaianKompetensiTinggi || nm.deskripsi || "").trim();
-                                  const isMismatchWithScore = isTuntas
-                                    ? !currentTinggiVal.startsWith("Menunjukkan penguasaan sangat baik dalam")
-                                    : !currentTinggiVal.startsWith("Perlu peningkatan konsistensi pemahaman dan pendampingan dalam");
-
-                                  const needsTinggi = isMismatchWithScore || shouldRefreshDeskripsi(currentTinggiVal, freshDesc.tinggi, mapelBankItems?.length || 0);
-                                  const needsBimbingan = shouldRefreshDeskripsi(nm.capaianKompetensiPerluBimbingan, freshDesc.perluBimbingan, mapelBankItems?.length || 0);
-
-                                  const displayTinggi = needsTinggi
-                                    ? freshDesc.tinggi
-                                    : (nm.capaianKompetensiTinggi || nm.deskripsi || freshDesc.tinggi);
-
-                                  const displayBimbingan = needsBimbingan
-                                    ? freshDesc.perluBimbingan
-                                    : (nm.capaianKompetensiPerluBimbingan || freshDesc.perluBimbingan);
-
-                                  return (
-                                    <>
-                                      {/* Capaian Tertinggi Box */}
-                                      <div className="space-y-0.5">
-                                        <span className="block text-[9.5px] font-bold text-slate-900 dark:text-slate-100">
-                                          Capaian Tertinggi:
-                                        </span>
-                                        <textarea
-                                          rows={3}
-                                          value={displayTinggi}
-                                          onChange={(e) => {
-                                            const targetIdx = mOriginalIdx !== -1 ? mOriginalIdx : studentRaport.nilaiMapel.length;
-                                            const updatedNilaiMapel = [...studentRaport.nilaiMapel];
-                                            updatedNilaiMapel[targetIdx] = {
-                                              ...nm,
-                                              mapel: mName,
-                                              capaianKompetensiTinggi: e.target.value,
-                                              deskripsi: e.target.value
-                                            };
-                                            handleUpdateRaportRecord({
-                                              ...studentRaport,
-                                              nilaiMapel: updatedNilaiMapel
-                                            });
-                                          }}
-                                          className="w-full text-[10px] p-1.5 rounded border border-slate-300 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-600 leading-relaxed resize-y"
-                                          placeholder="Capaian Tertinggi: Diisi otomatis sesuai materi TP kelas & nilai..."
-                                        />
-                                      </div>
-
-                                      {/* Perlu Peningkatan / Bimbingan Box */}
-                                      <div className="space-y-0.5">
-                                        <span className="block text-[9.5px] font-bold text-slate-900 dark:text-slate-100">
-                                          Perlu Peningkatan / Bimbingan:
-                                        </span>
-                                        <textarea
-                                          rows={3}
-                                          value={displayBimbingan}
-                                          onChange={(e) => {
-                                            const targetIdx = mOriginalIdx !== -1 ? mOriginalIdx : studentRaport.nilaiMapel.length;
-                                            const updatedNilaiMapel = [...studentRaport.nilaiMapel];
-                                            updatedNilaiMapel[targetIdx] = {
-                                              ...nm,
-                                              mapel: mName,
-                                              capaianKompetensiPerluBimbingan: e.target.value
-                                            };
-                                            handleUpdateRaportRecord({
-                                              ...studentRaport,
-                                              nilaiMapel: updatedNilaiMapel
-                                            });
-                                          }}
-                                          className="w-full text-[10px] p-1.5 rounded border border-slate-300 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-600 leading-relaxed resize-y"
-                                          placeholder="Perlu Peningkatan / Bimbingan: Diisi otomatis sesuai materi TP kelas & nilai..."
-                                        />
-                                      </div>
-                                    </>
-                                  );
-                                })()}
+                                {/* Perlu Peningkatan / Bimbingan Box */}
+                                <div className="space-y-0.5">
+                                  <span className="block text-[9.5px] font-bold text-slate-900 dark:text-slate-100">
+                                    Perlu Peningkatan / Bimbingan:
+                                  </span>
+                                  <textarea
+                                    rows={3}
+                                    value={nm.capaianKompetensiPerluBimbingan || ""}
+                                    onChange={(e) => {
+                                      const targetIdx = mOriginalIdx !== -1 ? mOriginalIdx : studentRaport.nilaiMapel.length;
+                                      const updatedNilaiMapel = [...studentRaport.nilaiMapel];
+                                      updatedNilaiMapel[targetIdx] = {
+                                        ...nm,
+                                        mapel: mName,
+                                        capaianKompetensiPerluBimbingan: e.target.value
+                                      };
+                                      handleUpdateRaportRecord({
+                                        ...studentRaport,
+                                        nilaiMapel: updatedNilaiMapel
+                                      });
+                                    }}
+                                    className="w-full text-[10px] p-1.5 rounded border border-slate-300 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/60 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-600 leading-relaxed resize-y"
+                                    placeholder="Perlu Peningkatan / Bimbingan: Diisi otomatis sesuai nilai dan keterangan diambil dari bank TP atau generate AI..."
+                                  />
+                                </div>
                               </td>
                             );
                           })}
@@ -4455,17 +3832,23 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                       const clampedVal = isNaN(val) ? 0 : Math.min(100, Math.max(0, val));
                                       const updatedNilaiMapel = [...studentRaport.nilaiMapel];
 
-                                      const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
-                                      const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, nm.mapel) && isMatchingClass(b.kelas, s.kelas));
-                                      const desc = generateFallbackDeskripsiFromTp(nm.mapel, clampedVal, currentTps, mapelBankItems, s.kelas, kktpVal);
+                                      let currentTinggi = nm.capaianKompetensiTinggi || nm.deskripsi || "";
+                                      let currentBimbingan = nm.capaianKompetensiPerluBimbingan || "";
+
+                                      // Otomatis menyesuaikan TP sesuai nilai yang diinput
+                                      if (autoSyncTpWithNilai || !currentTinggi) {
+                                        const mapelBankItems = bankTpList?.filter((b) => b.mapel.toLowerCase() === nm.mapel.toLowerCase());
+                                        const desc = generateFallbackDeskripsiFromTp(nm.mapel, clampedVal, currentTps, mapelBankItems);
+                                        currentTinggi = desc.tinggi;
+                                        currentBimbingan = desc.perluBimbingan;
+                                      }
 
                                       updatedNilaiMapel[mIdx] = {
                                         ...nm,
                                         nilaiAkhir: clampedVal,
-                                        kktp: kktpVal,
-                                        capaianKompetensiTinggi: desc.tinggi,
-                                        capaianKompetensiPerluBimbingan: desc.perluBimbingan,
-                                        deskripsi: desc.tinggi
+                                        capaianKompetensiTinggi: currentTinggi,
+                                        capaianKompetensiPerluBimbingan: currentBimbingan,
+                                        deskripsi: currentTinggi
                                       };
                                       handleUpdateRaportRecord({
                                         ...studentRaport,
@@ -4487,7 +3870,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                         isOpen: true,
                                         studentId: s.id,
                                         studentName: s.nama,
-                                        studentNilai: !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80,
+                                        studentNilai: typeof nm.nilaiAkhir === "number" ? nm.nilaiAkhir : 80,
                                         mapel: nm.mapel,
                                         targetIdx: mIdx,
                                         targetField: "tinggi"
@@ -4503,15 +3886,12 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const scoreVal = !isNaN(Number(nm.nilaiAkhir)) ? Number(nm.nilaiAkhir) : 80;
-                                      const kktpVal = !isNaN(Number(nm.kktp)) ? Number(nm.kktp) : 75;
-                                      const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, nm.mapel) && isMatchingClass(b.kelas, s.kelas));
-                                      const desc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems, s.kelas, kktpVal);
+                                      const scoreVal = typeof nm.nilaiAkhir === "number" ? nm.nilaiAkhir : 80;
+                                      const mapelBankItems = bankTpList?.filter((b) => b.mapel.toLowerCase() === nm.mapel.toLowerCase());
+                                      const desc = generateFallbackDeskripsiFromTp(nm.mapel, scoreVal, currentTps, mapelBankItems);
                                       const updatedNilaiMapel = [...studentRaport.nilaiMapel];
                                       updatedNilaiMapel[mIdx] = {
                                         ...nm,
-                                        nilaiAkhir: scoreVal,
-                                        kktp: kktpVal,
                                         capaianKompetensiTinggi: desc.tinggi,
                                         capaianKompetensiPerluBimbingan: desc.perluBimbingan,
                                         deskripsi: desc.tinggi
@@ -5646,8 +5026,8 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                   if (!student) return;
                   const score = tpPickerState.studentNilai ?? 80;
                   const mapelTps = effectiveTpBank[tpPickerState.mapel] || DEFAULT_TP_TEMPLATES[tpPickerState.mapel] || [];
-                  const mapelBankItems = bankTpList?.filter((b) => isMatchingMapel(b.mapel, tpPickerState.mapel) && isMatchingClass(b.kelas, student.kelas));
-                  const desc = generateFallbackDeskripsiFromTp(tpPickerState.mapel, score, mapelTps, mapelBankItems, student.kelas, 75);
+                  const mapelBankItems = bankTpList?.filter((b) => b.mapel.toLowerCase() === tpPickerState.mapel.toLowerCase());
+                  const desc = generateFallbackDeskripsiFromTp(tpPickerState.mapel, score, mapelTps, mapelBankItems);
                   
                   const currentRec = getRaportForStudent(student);
                   const updatedNilai = [...currentRec.nilaiMapel];
@@ -5752,10 +5132,11 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
 
                     if (targetIdx === -1) return;
 
-                    const cleanedSingle = cleanTpText(tpText, tpPickerState.mapel);
                     const formattedPhrase = tpPickerState.targetField === "tinggi"
-                      ? `Menunjukkan penguasaan sangat baik dalam ${cleanedSingle}.`
-                      : `Perlu peningkatan konsistensi pemahaman dan pendampingan dalam ${cleanedSingle}.`;
+                      ? (tpText.toLowerCase().startsWith("memahami") || tpText.toLowerCase().startsWith("mampu")
+                          ? `Menunjukkan penguasaan sangat baik dalam ${tpText.charAt(0).toLowerCase() + tpText.slice(1)}.`
+                          : `Menunjukkan penguasaan optimal dalam ${tpText}.`)
+                      : `Perlu peningkatan dan pendampingan lebih intensif dalam ${tpText.charAt(0).toLowerCase() + tpText.slice(1)}.`;
 
                     const currentFieldVal = tpPickerState.targetField === "tinggi"
                       ? (updatedNilai[targetIdx].capaianKompetensiTinggi || "")

@@ -18,14 +18,7 @@ import { Siswa, Mapel, DataNilai, Pengaturan, User, BankTpItem, RaportRecord } f
 import { batchSaveDocuments, saveDocument, COLLECTIONS } from "../lib/firebase";
 import { getAllowedClasses } from "../lib/accessControl";
 import { notifySimpanSuccess, notifySimpanError } from "../lib/swal";
-import {
-  DEFAULT_TP_TEMPLATES,
-  cleanTpText,
-  isMatchingMapel,
-  isMatchingClass,
-  generateFallbackDeskripsiFromTp,
-  getFallbackTpsForClassAndMapel
-} from "./CetakRaportView";
+import { DEFAULT_TP_TEMPLATES, cleanTpText } from "./CetakRaportView";
 import { getClassActiveSubjects } from "../lib/classSubjectUtils";
 
 interface InputPenilaianViewProps {
@@ -118,38 +111,40 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
     }
   }, [classActiveMapels, selectedMapel, isGuruKelas]);
 
-  // Available TPs for selected Mapel & Kelas from Bank TP and Default templates (Flexible Matching)
+  // Available TPs for selected Mapel & Kelas from Bank TP and Default templates
   const availableTps = useMemo(() => {
-    const list: Array<{ id: string; kode?: string; text: string }> = [];
+    const list: Array<{ id: string; kode?: string; text: string; kategori?: string }> = [];
 
-    // 1. From Bank TP (filtered flexibly by mapel and class)
+    // 1. From Bank TP (filtered by mapel and class if applicable)
     if (bankTpList && bankTpList.length > 0) {
       bankTpList
         .filter((item) => {
-          const matchMapel = isMatchingMapel(item.mapel, selectedMapel);
-          const matchKelas = isMatchingClass(item.kelas, selectedKelas);
+          const matchMapel = item.mapel.toLowerCase() === selectedMapel.toLowerCase();
+          const matchKelas = !item.kelas || item.kelas === "Semua Kelas" || item.kelas === selectedKelas;
           return matchMapel && matchKelas;
         })
         .forEach((b) => {
           list.push({
             id: b.id,
             kode: b.kodeTp,
-            text: b.tujuanPembelajaran
+            text: b.tujuanPembelajaran,
+            kategori: b.kategori
           });
         });
     }
 
     // 2. From Default Kurikulum Merdeka templates if Bank TP is empty for this mapel
-    if (list.length === 0) {
-      const fallbackTemplates = getFallbackTpsForClassAndMapel(selectedKelas, selectedMapel);
-      fallbackTemplates.forEach((t, idx) => {
+    const templates = DEFAULT_TP_TEMPLATES[selectedMapel] || [];
+    templates.forEach((t, idx) => {
+      if (!list.some((existing) => existing.text.toLowerCase() === t.toLowerCase())) {
         list.push({
           id: `tpl_${idx}`,
           kode: `TP ${idx + 1}`,
-          text: t
+          text: t,
+          kategori: idx === 0 ? "Tinggi" : idx === 1 ? "Sedang" : "Dasar"
         });
-      });
-    }
+      }
+    });
 
     return list;
   }, [bankTpList, selectedMapel, selectedKelas]);
@@ -192,29 +187,23 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
     }
   }, [selectedKelas, selectedMapel, jenisPenilaian, nilaiList, studentsInClass, isGuruKelas]);
 
-  // Helper to generate dynamic TP achievement description based on grade and full multi-TP concatenation
-  const getAutoTpDescription = (grade: number | "", tpText?: string) => {
+  // Helper to generate dynamic TP achievement description based on grade
+  const getAutoTpDescription = (grade: number | "", tpText: string) => {
     if (grade === "" || isNaN(Number(grade))) {
       return "";
     }
     const val = Number(grade);
+    const cleaned = cleanTpText(tpText, selectedMapel || "materi pokok");
 
-    const mapelBankItems = bankTpList?.filter(
-      (b) => isMatchingMapel(b.mapel, selectedMapel) && isMatchingClass(b.kelas, selectedKelas)
-    );
-    const allTpTexts = mapelBankItems && mapelBankItems.length > 0
-      ? mapelBankItems.map((b) => b.tujuanPembelajaran).filter(Boolean)
-      : availableTps.map((t) => t.text).filter(Boolean);
-
-    const descObj = generateFallbackDeskripsiFromTp(
-      selectedMapel || "Mata Pelajaran",
-      val,
-      allTpTexts.length > 0 ? allTpTexts : (tpText ? [tpText] : []),
-      mapelBankItems,
-      selectedKelas
-    );
-
-    return descObj.tinggi;
+    if (val >= 90) {
+      return `Menunjukkan penguasaan sangat baik dan optimal dalam ${cleaned}. Mampu bernalar kritis secara mandiri.`;
+    } else if (val >= 80) {
+      return `Menunjukkan penguasaan materi yang baik dan tuntas dalam ${cleaned}.`;
+    } else if (val >= 75) {
+      return `Telah mencapai kriteria ketuntasan tujuan pembelajaran dalam ${cleaned}.`;
+    } else {
+      return `Menunjukkan kemauan belajar, namun sangat membutuhkan pendampingan intensif dan bimbingan remedial dalam ${cleaned}.`;
+    }
   };
 
   // Helper for grade badge styling & tier
@@ -355,47 +344,30 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
               nipKepsek: config.NIP_Kepsek || "197002111993081001"
             };
 
-            const mapelBankItems = bankTpList?.filter(
-              (b) => isMatchingMapel(b.mapel, mapelToSave) && isMatchingClass(b.kelas, selectedKelas)
-            );
-            const allTpTexts = mapelBankItems && mapelBankItems.length > 0
-              ? mapelBankItems.map((b) => b.tujuanPembelajaran).filter(Boolean)
-              : availableTps.map((t) => t.text).filter(Boolean);
-
-            const scoreNum = !isNaN(Number(gradeVal)) ? Number(gradeVal) : 80;
-            const fullDescObj = generateFallbackDeskripsiFromTp(
-              mapelToSave,
-              scoreNum,
-              allTpTexts,
-              mapelBankItems,
-              selectedKelas,
-              75
-            );
-
-            const finalDescTinggi = customDescMap[s.id] || fullDescObj.tinggi;
-            const finalDescBimbingan = fullDescObj.perluBimbingan;
+            const autoDesc = getAutoTpDescription(gradeVal, selectedTp);
+            const finalDesc = customDescMap[s.id] || autoDesc;
 
             const updatedNilaiMapel = [...(currentRec.nilaiMapel || [])];
             const existIdx = updatedNilaiMapel.findIndex(
-              (nm) => isMatchingMapel(nm.mapel, mapelToSave)
+              (nm) => nm.mapel.toLowerCase() === mapelToSave.toLowerCase()
             );
 
             if (existIdx >= 0) {
               updatedNilaiMapel[existIdx] = {
                 ...updatedNilaiMapel[existIdx],
                 nilaiAkhir: gradeVal,
-                capaianKompetensiTinggi: finalDescTinggi,
-                capaianKompetensiPerluBimbingan: finalDescBimbingan,
-                deskripsi: finalDescTinggi
+                capaianKompetensiTinggi: gradeVal >= 75 ? finalDesc : updatedNilaiMapel[existIdx].capaianKompetensiTinggi,
+                capaianKompetensiPerluBimbingan: gradeVal < 75 ? finalDesc : updatedNilaiMapel[existIdx].capaianKompetensiPerluBimbingan,
+                deskripsi: finalDesc
               };
             } else {
               updatedNilaiMapel.push({
                 mapel: mapelToSave,
                 kktp: 75,
                 nilaiAkhir: gradeVal,
-                capaianKompetensiTinggi: finalDescTinggi,
-                capaianKompetensiPerluBimbingan: finalDescBimbingan,
-                deskripsi: finalDescTinggi
+                capaianKompetensiTinggi: gradeVal >= 75 ? finalDesc : "",
+                capaianKompetensiPerluBimbingan: gradeVal < 75 ? finalDesc : "",
+                deskripsi: finalDesc
               });
             }
 
@@ -496,47 +468,30 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
             nipKepsek: config.NIP_Kepala_Sekolah || "197002111993081001"
           };
 
-          const mapelBankItems = bankTpList?.filter(
-            (b) => isMatchingMapel(b.mapel, mapelToSave) && isMatchingClass(b.kelas, selectedKelas)
-          );
-          const allTpTexts = mapelBankItems && mapelBankItems.length > 0
-            ? mapelBankItems.map((b) => b.tujuanPembelajaran).filter(Boolean)
-            : availableTps.map((t) => t.text).filter(Boolean);
-
-          const scoreNum = !isNaN(Number(gradeVal)) ? Number(gradeVal) : 80;
-          const fullDescObj = generateFallbackDeskripsiFromTp(
-            mapelToSave,
-            scoreNum,
-            allTpTexts,
-            mapelBankItems,
-            selectedKelas,
-            75
-          );
-
-          const finalDescTinggi = customDescMap[s.id] || fullDescObj.tinggi;
-          const finalDescBimbingan = fullDescObj.perluBimbingan;
+          const autoDesc = getAutoTpDescription(gradeVal, selectedTp);
+          const finalDesc = customDescMap[s.id] || autoDesc;
 
           const updatedNilaiMapel = [...currentRec.nilaiMapel];
           const existIdx = updatedNilaiMapel.findIndex(
-            (nm) => isMatchingMapel(nm.mapel, mapelToSave)
+            (nm) => nm.mapel.toLowerCase() === mapelToSave.toLowerCase()
           );
 
           if (existIdx >= 0) {
             updatedNilaiMapel[existIdx] = {
               ...updatedNilaiMapel[existIdx],
               nilaiAkhir: gradeVal,
-              capaianKompetensiTinggi: finalDescTinggi,
-              capaianKompetensiPerluBimbingan: finalDescBimbingan,
-              deskripsi: finalDescTinggi
+              capaianKompetensiTinggi: gradeVal >= 75 ? finalDesc : updatedNilaiMapel[existIdx].capaianKompetensiTinggi,
+              capaianKompetensiPerluBimbingan: gradeVal < 75 ? finalDesc : updatedNilaiMapel[existIdx].capaianKompetensiPerluBimbingan,
+              deskripsi: finalDesc
             };
           } else {
             updatedNilaiMapel.push({
               mapel: mapelToSave,
               kktp: 75,
               nilaiAkhir: gradeVal,
-              capaianKompetensiTinggi: finalDescTinggi,
-              capaianKompetensiPerluBimbingan: finalDescBimbingan,
-              deskripsi: finalDescTinggi
+              capaianKompetensiTinggi: gradeVal >= 75 ? finalDesc : "",
+              capaianKompetensiPerluBimbingan: gradeVal < 75 ? finalDesc : "",
+              deskripsi: finalDesc
             });
           }
 
