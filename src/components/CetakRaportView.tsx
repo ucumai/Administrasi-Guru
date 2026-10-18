@@ -1476,9 +1476,15 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
       };
     });
 
+    const defaultEkskul = [
+      { nama: "Pramuka", predikat: "A", keterangan: "Sangat aktif, disiplin, dan memiliki jiwa kepemimpinan yang baik." },
+      { nama: "Pencak Silat", predikat: "B", keterangan: "Menguasai gerakan dasar seni beladiri dengan baik." }
+    ];
+
     return {
       ...rec,
-      nilaiMapel: updatedNilaiMapel
+      nilaiMapel: updatedNilaiMapel,
+      ekskul: Array.isArray(rec.ekskul) && rec.ekskul.length > 0 ? rec.ekskul : defaultEkskul
     };
   };
 
@@ -2337,12 +2343,12 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
           ]);
 
           autoTable(doc, {
-            startY: idHeaderY + 9,
+            startY: idHeaderY + 8,
             head: [["No", "Mata Pelajaran", "Nilai Akhir", "Capaian Kompetensi / Keterangan"]],
             body: tableBody,
             theme: "grid",
             headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold", fontSize: 8, halign: "center" },
-            styles: { fontSize: 8, cellPadding: 1.8 },
+            styles: { fontSize: 7.5, cellPadding: 1.3 },
             columnStyles: {
               0: { cellWidth: 10, halign: "center" },
               1: { cellWidth: 55 },
@@ -2351,28 +2357,29 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
             }
           });
 
-          let currentY = (doc as any).lastAutoTable.finalY + 5;
+          let currentY = (doc as any).lastAutoTable.finalY + 4;
 
           // B. Ekstrakurikuler Table
-          if (studentRaport.ekskul && studentRaport.ekskul.length > 0) {
-            const ekskulRows = studentRaport.ekskul.map((ek, i) => [
+          const activeEkskul = (studentRaport.ekskul || []).filter((ek) => ek && (ek.nama || ek.keterangan));
+          if (activeEkskul.length > 0) {
+            const ekskulRows = activeEkskul.map((ek, i) => [
               i + 1,
-              ek.nama,
-              ek.predikat,
+              ek.nama || "Pramuka",
+              ek.predikat || "A",
               ek.keterangan || "-"
             ]);
 
-            doc.setFontSize(8.5);
+            doc.setFontSize(8);
             doc.setFont("helvetica", "bold");
             doc.text("B. Kegiatan Ekstrakurikuler", 14, currentY);
 
             autoTable(doc, {
-              startY: currentY + 2,
+              startY: currentY + 1.5,
               head: [["No", "Kegiatan Ekstrakurikuler", "Predikat", "Keterangan"]],
               body: ekskulRows,
               theme: "grid",
-              headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold", fontSize: 8, halign: "center" },
-              styles: { fontSize: 8, cellPadding: 1.5 },
+              headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold", fontSize: 7.5, halign: "center" },
+              styles: { fontSize: 7.5, cellPadding: 1.2 },
               columnStyles: {
                 0: { cellWidth: 10, halign: "center" },
                 1: { cellWidth: 55 },
@@ -3078,13 +3085,28 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                       @media print {
                         @page {
                           size: 215.9mm 330.2mm;
-                          margin: 8mm 10mm;
+                          margin: 6mm 8mm;
                         }
                         body {
                           background-color: white !important;
                           color: black !important;
                           -webkit-print-color-adjust: exact !important;
                           print-color-adjust: exact !important;
+                        }
+                        .f4-cover-page {
+                          height: 310mm !important;
+                          max-height: 312mm !important;
+                          page-break-after: always !important;
+                          break-after: page !important;
+                          overflow: hidden !important;
+                          box-sizing: border-box !important;
+                        }
+                        .f4-nilai-page {
+                          min-height: 300mm !important;
+                          max-height: 314mm !important;
+                          page-break-after: always !important;
+                          break-after: page !important;
+                          box-sizing: border-box !important;
                         }
                         .print\\:break-after-page {
                           page-break-after: always !important;
@@ -3094,12 +3116,18 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                           page-break-before: always !important;
                           break-before: page !important;
                         }
+                        table {
+                          page-break-inside: avoid !important;
+                        }
+                        tr {
+                          page-break-inside: avoid !important;
+                        }
                       }
                     `}</style>
 
                     {/* COVER PAGE (Rendered if mode is full or cover) */}
                     {(printMode === "full" || printMode === "cover") && (
-                      <div className="flex flex-col justify-between min-h-[305mm] border-4 border-double border-slate-800 p-8 text-center mb-8 print:mb-0 print:break-after-page">
+                      <div className="f4-cover-page flex flex-col justify-between min-h-[295mm] max-h-[310mm] border-4 border-double border-slate-800 p-6 sm:p-8 text-center mb-8 print:mb-0 print:break-after-page">
                         {/* Top School Header */}
                         <div className="space-y-1.5">
                           <p className="text-xs font-bold uppercase tracking-widest text-slate-700">
@@ -3183,7 +3211,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
 
                     {/* LEMBAR NILAI CAPAIAN HASIL BELAJAR */}
                     {(printMode === "full" || printMode === "lembar_nilai") && (
-                      <div className="space-y-6">
+                      <div className="f4-nilai-page space-y-4 print:space-y-3">
                         {/* Kop Surat Resmi */}
                         {showKopSekolah && (
                           <KopSuratDinas 
