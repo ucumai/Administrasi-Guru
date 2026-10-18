@@ -551,3 +551,192 @@ export function exportToOfflineExcel(payload: BackupDataPayload, filename: strin
   // Download
   XLSX.writeFile(wb, filename);
 }
+
+import { batchSaveDocuments, savePengaturan, COLLECTIONS } from "./firebase";
+
+export interface RestoreSummary {
+  siswaCount: number;
+  userCount: number;
+  mapelCount: number;
+  absensiCount: number;
+  nilaiCount: number;
+  jadwalCount: number;
+  tabunganCount: number;
+  pengaturanUpdated: boolean;
+}
+
+/**
+ * Parse an uploaded Excel (.xlsx, .xls, .csv) backup file and restore data directly to Cloud Firestore
+ */
+export async function parseAndRestoreExcelBackup(file: File): Promise<RestoreSummary> {
+  const arrayBuffer = await file.arrayBuffer();
+  const wb = XLSX.read(arrayBuffer, { type: "array" });
+
+  const summary: RestoreSummary = {
+    siswaCount: 0,
+    userCount: 0,
+    mapelCount: 0,
+    absensiCount: 0,
+    nilaiCount: 0,
+    jadwalCount: 0,
+    tabunganCount: 0,
+    pengaturanUpdated: false,
+  };
+
+  for (const sheetName of wb.SheetNames) {
+    const ws = wb.Sheets[sheetName];
+    if (!ws) continue;
+    const jsonRows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+    if (!jsonRows || jsonRows.length === 0) continue;
+
+    const lowerSheet = sheetName.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    // 1. Data Siswa
+    if (lowerSheet.includes("siswa") || lowerSheet.includes("datasiswa")) {
+      const siswaItems: Siswa[] = jsonRows
+        .filter((r) => r["Nama"] || r["nama"] || r["Nama Siswa"])
+        .map((r, idx) => ({
+          id: r["id"] || r["ID"] || `sis_ex_${Date.now()}_${idx}`,
+          nisn: String(r["NISN"] || r["nisn"] || "").trim(),
+          nis: String(r["NIS"] || r["nis"] || "").trim(),
+          nama: String(r["Nama"] || r["nama"] || r["Nama Siswa"] || "").trim(),
+          kelas: String(r["Kelas"] || r["kelas"] || "Kelas 4").trim(),
+        }));
+
+      if (siswaItems.length > 0) {
+        await batchSaveDocuments(COLLECTIONS.SISWA, siswaItems);
+        summary.siswaCount += siswaItems.length;
+      }
+    }
+
+    // 2. Guru / User
+    else if (lowerSheet.includes("guru") || lowerSheet.includes("user") || lowerSheet.includes("daftarguru")) {
+      const userItems: User[] = jsonRows
+        .filter((r) => r["Username"] || r["username"] || r["Nama"])
+        .map((r, idx) => ({
+          id: r["id"] || r["ID"] || `usr_ex_${Date.now()}_${idx}`,
+          username: String(r["Username"] || r["username"] || `user_${idx}`).trim(),
+          nama: String(r["Nama"] || r["nama"] || "").trim(),
+          nip: String(r["NIP"] || r["nip"] || "-").trim(),
+          role: (r["Role"] || r["role"] || "guru_kelas") as any,
+          kelasUtama: String(r["Kelas"] || r["kelas"] || "").trim(),
+        }));
+
+      if (userItems.length > 0) {
+        await batchSaveDocuments(COLLECTIONS.USERS, userItems);
+        summary.userCount += userItems.length;
+      }
+    }
+
+    // 3. Log Absensi
+    else if (lowerSheet.includes("absensi") || lowerSheet.includes("logabsensi")) {
+      const absensiItems: LogAbsensi[] = jsonRows
+        .filter((r) => r["Siswa"] || r["namaSiswa"] || r["Nama Siswa"])
+        .map((r, idx) => ({
+          id: r["id"] || r["ID"] || `abs_ex_${Date.now()}_${idx}`,
+          tanggal: String(r["Tanggal"] || r["tanggal"] || new Date().toISOString().split("T")[0]).trim(),
+          waktu: String(r["Waktu"] || r["waktu"] || new Date().toISOString().split("T")[0]).trim(),
+          idSiswa: String(r["idSiswa"] || r["ID Siswa"] || `s_${idx}`).trim(),
+          namaSiswa: String(r["Siswa"] || r["namaSiswa"] || r["Nama Siswa"] || "").trim(),
+          kelas: String(r["Kelas"] || r["kelas"] || "Kelas 4").trim(),
+          mapel: String(r["Mapel"] || r["mapel"] || "Umum").trim(),
+          status: (r["Status"] || r["status"] || "Hadir") as any,
+          bulan: String(r["Bulan"] || r["bulan"] || "").trim(),
+          tahun: String(r["Tahun"] || r["tahun"] || "").trim(),
+          namaGuru: String(r["Guru"] || r["namaGuru"] || "-").trim(),
+        }));
+
+      if (absensiItems.length > 0) {
+        await batchSaveDocuments(COLLECTIONS.LOG_ABSENSI, absensiItems);
+        summary.absensiCount += absensiItems.length;
+      }
+    }
+
+    // 4. Data Nilai
+    else if (lowerSheet.includes("nilai") || lowerSheet.includes("datanilai")) {
+      const nilaiItems: DataNilai[] = jsonRows
+        .filter((r) => r["Siswa"] || r["namaSiswa"] || r["Nilai"] || r["nilai"])
+        .map((r, idx) => ({
+          id: r["id"] || r["ID"] || `nil_ex_${Date.now()}_${idx}`,
+          waktu: String(r["Waktu"] || r["waktu"] || new Date().toISOString().split("T")[0]).trim(),
+          idSiswa: String(r["idSiswa"] || r["ID Siswa"] || `s_${idx}`).trim(),
+          namaSiswa: String(r["Siswa"] || r["namaSiswa"] || "").trim(),
+          kelas: String(r["Kelas"] || r["kelas"] || "").trim(),
+          mapel: String(r["Mapel"] || r["mapel"] || "").trim(),
+          jenis: String(r["Jenis"] || r["jenis"] || "UH1").trim(),
+          nilai: Number(r["Nilai"] || r["nilai"]) || 0,
+          tp: String(r["TP"] || r["tp"] || "").trim(),
+          deskripsi: String(r["Deskripsi"] || r["deskripsi"] || "").trim(),
+          namaGuru: String(r["Guru"] || r["namaGuru"] || "-").trim(),
+        }));
+
+      if (nilaiItems.length > 0) {
+        await batchSaveDocuments(COLLECTIONS.DATA_NILAI, nilaiItems);
+        summary.nilaiCount += nilaiItems.length;
+      }
+    }
+
+    // 5. Jadwal Pelajaran
+    else if (lowerSheet.includes("jadwal") || lowerSheet.includes("jadwalpelajaran")) {
+      const jadwalItems: Jadwal[] = jsonRows
+        .filter((r) => r["Hari"] || r["hari"] || r["Mapel"])
+        .map((r, idx) => ({
+          id: r["id"] || r["ID"] || `jdw_ex_${Date.now()}_${idx}`,
+          hari: String(r["Hari"] || r["hari"] || "Senin").trim(),
+          jam: String(r["Jam"] || r["jam"] || "07.00 - 08.00").trim(),
+          kelas: String(r["Kelas"] || r["kelas"] || "").trim(),
+          mapel: String(r["Mapel"] || r["mapel"] || "").trim(),
+        }));
+
+      if (jadwalItems.length > 0) {
+        await batchSaveDocuments(COLLECTIONS.JADWAL, jadwalItems);
+        summary.jadwalCount += jadwalItems.length;
+      }
+    }
+
+    // 6. Tabungan Kelas
+    else if (lowerSheet.includes("tabungan") || lowerSheet.includes("tabungankelas")) {
+      const tabunganItems: TabunganKelas[] = jsonRows
+        .filter((r) => r["Siswa"] || r["namaSiswa"] || r["Jumlah"] || r["jumlah"])
+        .map((r, idx) => ({
+          id: r["id"] || r["ID"] || `tbg_ex_${Date.now()}_${idx}`,
+          tanggal: String(r["Tanggal"] || r["tanggal"] || new Date().toISOString().split("T")[0]).trim(),
+          idSiswa: String(r["idSiswa"] || `s_${idx}`).trim(),
+          namaSiswa: String(r["Siswa"] || r["namaSiswa"] || "").trim(),
+          kelas: String(r["Kelas"] || r["kelas"] || "").trim(),
+          jenis: (r["Jenis"] || r["jenis"] || "Setor") as any,
+          jumlah: Number(r["Jumlah"] || r["jumlah"]) || 0,
+          keterangan: String(r["Keterangan"] || r["keterangan"] || "-").trim(),
+        }));
+
+      if (tabunganItems.length > 0) {
+        await batchSaveDocuments(COLLECTIONS.TABUNGAN_KELAS, tabunganItems);
+        summary.tabunganCount += tabunganItems.length;
+      }
+    }
+
+    // 7. Pengaturan Aplikasi / Informasi Cadangan
+    else if (lowerSheet.includes("pengaturan") || lowerSheet.includes("info") || lowerSheet.includes("ringkasan")) {
+      const configObj: Partial<Pengaturan> = {};
+      jsonRows.forEach((r) => {
+        const k = String(r["Kunci"] || r["Key"] || r["Informasi"] || r[Object.keys(r)[0]] || "").trim();
+        const v = String(r["Nilai"] || r["Value"] || r[Object.keys(r)[1]] || "").trim();
+
+        if (k.toLowerCase().includes("sekolah")) configObj.Nama_Sekolah = v;
+        if (k.toLowerCase().includes("kepala") || k.toLowerCase().includes("kepsek")) configObj.Nama_Kepsek = v;
+        if (k.toLowerCase().includes("nip kepala") || k.toLowerCase().includes("nip kepsek")) configObj.NIP_Kepsek = v;
+        if (k.toLowerCase().includes("guru") || k.toLowerCase().includes("admin")) configObj.Nama_Guru = v;
+        if (k.toLowerCase().includes("pemerintah")) configObj.Pemerintah = v;
+        if (k.toLowerCase().includes("alamat")) configObj.Alamat_Sekolah = v;
+      });
+
+      if (Object.keys(configObj).length > 0) {
+        await savePengaturan(configObj as Pengaturan);
+        summary.pengaturanUpdated = true;
+      }
+    }
+  }
+
+  return summary;
+}
+

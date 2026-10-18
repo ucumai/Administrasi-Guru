@@ -19,7 +19,9 @@ import {
   PiggyBank, 
   BookOpen, 
   Info,
-  Layers
+  Layers,
+  Upload,
+  FolderUp
 } from "lucide-react";
 import { 
   Siswa, 
@@ -41,6 +43,7 @@ import {
 import { 
   syncDatabaseToGoogleSheets, 
   exportToOfflineExcel, 
+  parseAndRestoreExcelBackup,
   getSavedSpreadsheetId, 
   getSavedLastBackupMeta,
   fetchSheetRows,
@@ -319,6 +322,70 @@ export const GoogleSheetsBackupView: React.FC<GoogleSheetsBackupViewProps> = ({
       timer: 2500,
       showConfirmButton: false
     });
+  };
+
+  const [isRestoringExcel, setIsRestoringExcel] = useState(false);
+
+  // Handle restoring database from uploaded Excel file (.xlsx, .csv)
+  const handleFileUploadAndRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const confirmRes = await Swal.fire({
+      title: "Pulihkan Database dari File Excel?",
+      html: `
+        <div class="text-left text-sm space-y-2 text-slate-700 dark:text-slate-300">
+          <p>Anda akan mengunggah & memproses file cadangan: <b>${file.name}</b></p>
+          <p class="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+            Data dari file Excel ini akan langsung dibaca dan dimasukkan ke Google Cloud Firestore untuk disinkronkan ke semua perangkat.
+          </p>
+        </div>
+      `,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#10b981",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Unggah & Pulihkan Sekarang",
+      cancelButtonText: "Batal",
+    });
+
+    if (!confirmRes.isConfirmed) {
+      e.target.value = "";
+      return;
+    }
+
+    setIsRestoringExcel(true);
+    try {
+      const summary = await parseAndRestoreExcelBackup(file);
+      Swal.fire({
+        icon: "success",
+        title: "Database Berhasil Dipulihkan!",
+        html: `
+          <div class="space-y-2 text-sm text-left text-slate-700 dark:text-slate-300">
+            <p>Data berikut berhasil dibaca dari file Excel dan dimuat ke Cloud Firestore:</p>
+            <ul class="list-disc pl-5 text-xs space-y-1">
+              <li><b>${summary.siswaCount}</b> Data Siswa</li>
+              <li><b>${summary.userCount}</b> Guru & Pengguna</li>
+              <li><b>${summary.absensiCount}</b> Log Absensi</li>
+              <li><b>${summary.nilaiCount}</b> Data Nilai</li>
+              <li><b>${summary.jadwalCount}</b> Jadwal Pelajaran</li>
+              <li><b>${summary.tabunganCount}</b> Tabungan Kelas</li>
+            </ul>
+          </div>
+        `,
+        confirmButtonColor: "#10b981",
+      });
+    } catch (err: any) {
+      console.error(err);
+      Swal.fire({
+        icon: "error",
+        title: "Gagal Membaca File Excel",
+        text: err.message || "Pastikan file yang diunggah berformat .xlsx, .xls, atau .csv cadangan yang sesuai.",
+      });
+    } finally {
+      setIsRestoringExcel(false);
+      e.target.value = "";
+    }
   };
 
   const spreadsheetUrl = spreadsheetId 
@@ -603,6 +670,45 @@ export const GoogleSheetsBackupView: React.FC<GoogleSheetsBackupViewProps> = ({
               {mapelList.length + jadwalList.length}
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Upload & Restore Excel File Card */}
+      <div className="bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-blue-500/10 dark:from-teal-950/40 dark:via-emerald-950/40 dark:to-blue-950/40 rounded-3xl p-6 md:p-8 border-2 border-emerald-500/30 shadow-xs">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="max-w-xl space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-600 text-white shadow-xs mb-1">
+              <FolderUp className="w-3.5 h-3.5" />
+              Restorasi Cadangan Offline / Excel
+            </div>
+            <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100">
+              Unggah & Pulihkan Database dari File Excel (.xlsx / .csv)
+            </h2>
+            <p className="text-xs md:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Punya file cadangan Excel atau spreadsheet offline? Unggah file <b>.xlsx, .xls, atau .csv</b> Anda di sini untuk secara otomatis membaca dan memasukkan data siswa, guru, nilai, jadwal, serta log absensi langsung ke Google Cloud Firestore.
+            </p>
+          </div>
+
+          <label className={`w-full md:w-auto inline-flex items-center justify-center gap-3 px-6 py-3.5 rounded-2xl ${isRestoringExcel ? 'bg-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 cursor-pointer'} text-white font-bold text-sm shadow-md transition-all`}>
+            {isRestoringExcel ? (
+              <>
+                <RefreshCw className="w-5 h-5 animate-spin" />
+                Membaca & Memulihkan File...
+              </>
+            ) : (
+              <>
+                <Upload className="w-5 h-5" />
+                Pilih File Excel Cadangan (.xlsx)
+              </>
+            )}
+            <input
+              type="file"
+              accept=".xlsx, .xls, .csv"
+              disabled={isRestoringExcel}
+              onChange={handleFileUploadAndRestore}
+              className="hidden"
+            />
+          </label>
         </div>
       </div>
 
