@@ -76,7 +76,7 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
   onNavigateToSheets,
   availableClasses = ["Kelas 1", "Kelas 2", "Kelas 3A", "Kelas 3B", "Kelas 4", "Kelas 5", "Kelas 6", "Pramuka", "Silat", "Hadroh", "Drumband"]
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<"profil" | "users" | "keamanan" | "tampilan" | "optimasi">("profil");
+  const [activeSubTab, setActiveSubTab] = useState<"profil" | "users" | "keamanan" | "tampilan">("profil");
 
   // Theme Customizer State
   const [selectedPreset, setSelectedPreset] = useState<string>(() => config?.themeConfig?.presetId || "ocean");
@@ -407,17 +407,6 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
             >
               <Palette className="w-4 h-4 text-purple-400" />
               <span>Tema & Desain Warna</span>
-            </button>
-            <button
-              onClick={() => setActiveSubTab("optimasi")}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer ${
-                activeSubTab === "optimasi"
-                  ? "bg-amber-600 text-white shadow-xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <Zap className="w-4 h-4 text-amber-400 animate-pulse" />
-              <span>Optimasi Kuota (Anti-Limit)</span>
             </button>
           </div>
         </div>
@@ -1828,10 +1817,7 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
           </div>
         )}
 
-        {/* TAB 5: OPTIMASI KUOTA FIRESTORE (ZERO-COST & ANTI-LIMIT) */}
-        {activeSubTab === "optimasi" && (
-          <FirestoreQuotaOptimizerCard onNavigateToSheets={onNavigateToSheets} />
-        )}
+ 
 
         {/* Zona Bahaya / Reset Total (Hanya untuk Admin) */}
         {onNavigateToReset && currentUser.role === "admin" && (
