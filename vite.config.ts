@@ -3,26 +3,21 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig } from 'vite';
 
-export default defineConfig(() => {
-  return {
-    plugins: [react(), tailwindcss()],
-    resolve: {
-      alias: [
-        { find: /^@\/src\/(.*)/, replacement: path.resolve(__dirname, './src/$1') },
-        { find: /^@\/(.*)/, replacement: path.resolve(__dirname, './src/$1') },
-        { find: '~', replacement: path.resolve(__dirname, '.') }
-      ]
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
     },
-    server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      hmr: process.env.DISABLE_HMR !== 'true',
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
-    },
-    build: {
-      sourcemap: false, // Prevent publishing original source code via source maps
-      minify: 'esbuild' as const,
-      cssMinify: true,
-      chunkSizeWarningLimit: 2500,
-    },
-  };
+  },
+  server: {
+    hmr: process.env.DISABLE_HMR !== 'true',
+    watch: process.env.DISABLE_HMR === 'true' ? null : {},
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    cssMinify: true,
+    chunkSizeWarningLimit: 3000,
+  },
 });
