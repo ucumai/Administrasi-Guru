@@ -193,13 +193,16 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
       return "";
     }
     const val = Number(grade);
-    const effectiveTp = tpText || (availableTps.length > 0 ? availableTps.map((t) => t.text).join(", ") : `materi pokok ${selectedMapel}`);
-    const cleaned = cleanTpText(effectiveTp, selectedMapel || "materi pokok");
+    const cleaned = cleanTpText(tpText, selectedMapel || "materi pokok");
 
-    if (val >= 75) {
-      return `Menunjukkan penguasaan sangat baik dalam ${cleaned}.`;
+    if (val >= 90) {
+      return `Menunjukkan penguasaan sangat baik dan optimal dalam ${cleaned}. Mampu bernalar kritis secara mandiri.`;
+    } else if (val >= 80) {
+      return `Menunjukkan penguasaan materi yang baik dan tuntas dalam ${cleaned}.`;
+    } else if (val >= 75) {
+      return `Telah mencapai kriteria ketuntasan tujuan pembelajaran dalam ${cleaned}.`;
     } else {
-      return `Perlu peningkatan konsistensi pemahaman dan pendampingan dalam ${cleaned}.`;
+      return `Menunjukkan kemauan belajar, namun sangat membutuhkan pendampingan intensif dan bimbingan remedial dalam ${cleaned}.`;
     }
   };
 

@@ -30,7 +30,6 @@ const TAB_TITLES: Record<string, string> = {
   asistenai: "Asisten AI Pendamping Guru",
   lkpdai: "Generator LKPD AI (Lembar Kerja Peserta Didik)",
   ailainnya: "Generator AI Lainnya",
-  cadangan_sheets: "Pusat Cadangan & Ekspor Google Sheets",
   laporan: "Pusat Cetak Laporan PDF",
   pengaturan: "Pengaturan & Hak Akses User",
   resetdb: "Kosongkan & Hapus Seluruh Isi Database"

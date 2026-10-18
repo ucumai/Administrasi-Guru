@@ -152,12 +152,28 @@ function getFaseByClass(kelas: string): string {
   return "Fase A";
 }
 
-function generateDefaultDeskripsi(mapel: string, nilaiNum: number, bankItems?: BankTpItem[]): { tinggi: string; perluBimbingan: string } {
-  if (bankItems && bankItems.length > 0) {
-    return generateFallbackDeskripsiFromTp(mapel, nilaiNum, [], bankItems);
+function generateDefaultDeskripsi(mapel: string, nilaiNum: number): { tinggi: string; perluBimbingan: string } {
+  if (nilaiNum >= 90) {
+    return {
+      tinggi: `Menunjukkan penguasaan yang sangat istimewa dalam seluruh materi pokok dan tujuan pembelajaran ${mapel}. Mampu bernalar kritis dan mandiri.`,
+      perluBimbingan: `Pertahankan prestasi unggul dan perluas pengayaan pada studi kasus aplikatif.`
+    };
+  } else if (nilaiNum >= 80) {
+    return {
+      tinggi: `Menunjukkan penguasaan materi yang sangat baik dalam memahami konsep dasar dan penerapan capaian pembelajaran ${mapel}.`,
+      perluBimbingan: `Perlu peningkatan konsistensi pemahaman pada pendalaman materi yang lebih kompleks.`
+    };
+  } else if (nilaiNum >= 75) {
+    return {
+      tinggi: `Menunjukkan pemahaman yang baik dan telah mencapai kriteria ketuntasan minimal pada mata pelajaran ${mapel}.`,
+      perluBimbingan: `Perlu pendampingan dan latihan tambahan pada beberapa indikator soal dan pemecahan masalah.`
+    };
+  } else {
+    return {
+      tinggi: `Menunjukkan kemauan belajar yang cukup pada konsep pengenalan materi ${mapel}.`,
+      perluBimbingan: `Sangat membutuhkan bimbingan intensif dan remedial untuk mencapai tujuan pembelajaran pokok.`
+    };
   }
-  const defaultTps = DEFAULT_TP_TEMPLATES[mapel] || [];
-  return generateFallbackDeskripsiFromTp(mapel, nilaiNum, defaultTps);
 }
 
 export const DEFAULT_TP_TEMPLATES: Record<string, string[]> = {
@@ -215,30 +231,11 @@ export const DEFAULT_TP_TEMPLATES: Record<string, string[]> = {
 
 export function cleanTpText(text: string, mapelFallback: string = ""): string {
   let t = (text || "").trim();
-  // Remove numbering or prefixes such as "1.1 ", "TP 1.1: ", "TP 1 - ", "1. "
+  // Remove numbering or prefixes such as "1.1 ", "TP 1.1: ", "TP 1 - "
   t = t.replace(/^(TP\s*[\d.]*[:\s-]*|\d+[\.\)]\s*)/i, "").trim();
   if (t.endsWith(".")) t = t.slice(0, -1);
   if (!t) return `konsep materi ${mapelFallback}`.trim();
   return t.charAt(0).toLowerCase() + t.slice(1);
-}
-
-export function combineTpTexts(tpList: string[], mapelFallback: string = ""): string {
-  const cleaned = tpList
-    .map((t) => cleanTpText(t, mapelFallback))
-    .filter(Boolean);
-
-  if (cleaned.length === 0) {
-    return `materi pokok ${mapelFallback}`.trim();
-  }
-  if (cleaned.length === 1) {
-    return cleaned[0];
-  }
-  if (cleaned.length === 2) {
-    return `${cleaned[0]} serta ${cleaned[1]}`;
-  }
-  const last = cleaned[cleaned.length - 1];
-  const initial = cleaned.slice(0, -1).join(", ");
-  return `${initial}, serta ${last}`;
 }
 
 export function generateFallbackDeskripsiFromTp(
@@ -247,35 +244,66 @@ export function generateFallbackDeskripsiFromTp(
   tps: string[],
   bankItems?: BankTpItem[]
 ): { tinggi: string; perluBimbingan: string } {
-  let allTps: string[] = [];
+  const rawList = tps && tps.length > 0 ? tps : (DEFAULT_TP_TEMPLATES[mapel] || [
+    `memahami konsep dasar dan materi pokok ${mapel}`,
+    `menerapkan pemahaman dalam menyelesaikan tugas kontekstual`,
+    `berpikir kritis dan menyajikan hasil telaah secara mandiri`
+  ]);
 
-  // Extract all TP texts from bankItems if provided
+  let tpBest = "";
+  let tpSecond = "";
+  let tpNeedHelp = "";
+
+  // Prioritize based on Bank TP items and their categorized difficulty if available
   if (bankItems && bankItems.length > 0) {
-    allTps = bankItems.map((b) => b.tujuanPembelajaran).filter(Boolean);
+    const tinggiItems = bankItems.filter((b) => b.kategori === "Tinggi");
+    const sedangItems = bankItems.filter((b) => b.kategori === "Sedang");
+    const bimbinganItems = bankItems.filter((b) => b.kategori === "Bimbingan" || b.kategori === "Umum");
+
+    if (nilaiNum >= 90) {
+      tpBest = tinggiItems[0]?.tujuanPembelajaran || rawList[0] || `konsep utama ${mapel}`;
+      tpSecond = tinggiItems[1]?.tujuanPembelajaran || sedangItems[0]?.tujuanPembelajaran || rawList[1] || tpBest;
+      tpNeedHelp = rawList[rawList.length - 1] || `pengayaan materi aplikatif ${mapel}`;
+    } else if (nilaiNum >= 80) {
+      tpBest = sedangItems[0]?.tujuanPembelajaran || tinggiItems[0]?.tujuanPembelajaran || rawList[0] || `konsep dasar ${mapel}`;
+      tpSecond = sedangItems[1]?.tujuanPembelajaran || rawList[1] || tpBest;
+      tpNeedHelp = tinggiItems[0]?.tujuanPembelajaran || rawList[rawList.length - 1] || `materi lanjutan ${mapel}`;
+    } else if (nilaiNum >= 75) {
+      tpBest = bimbinganItems[0]?.tujuanPembelajaran || rawList[0] || `konsep dasar ${mapel}`;
+      tpNeedHelp = sedangItems[0]?.tujuanPembelajaran || tinggiItems[0]?.tujuanPembelajaran || rawList[rawList.length - 1] || `pemecahan masalah ${mapel}`;
+    } else {
+      tpBest = bimbinganItems[0]?.tujuanPembelajaran || rawList[0] || `pengenalan materi ${mapel}`;
+      tpNeedHelp = bimbinganItems[1]?.tujuanPembelajaran || sedangItems[0]?.tujuanPembelajaran || rawList[rawList.length - 1] || `kompetensi dasar ${mapel}`;
+    }
   }
 
-  // Fallback to tps array
-  if (allTps.length === 0 && tps && tps.length > 0) {
-    allTps = tps;
-  }
+  if (!tpBest) tpBest = rawList[0] || `konsep utama ${mapel}`;
+  if (!tpSecond) tpSecond = rawList[1] || tpBest;
+  if (!tpNeedHelp) tpNeedHelp = rawList[rawList.length - 1] || `pendalaman materi ${mapel}`;
 
-  // Fallback to default template for mapel
-  if (allTps.length === 0) {
-    allTps = DEFAULT_TP_TEMPLATES[mapel] || [`memahami konsep dasar dan materi pokok ${mapel}`];
-  }
+  const cBest = cleanTpText(tpBest, mapel);
+  const cSecond = cleanTpText(tpSecond, mapel);
+  const cNeedHelp = cleanTpText(tpNeedHelp, mapel);
 
-  const combinedTpText = combineTpTexts(allTps, mapel);
-
-  // Check against passing standard (KKTP >= 75)
-  if (nilaiNum >= 75) {
+  if (nilaiNum >= 90) {
     return {
-      tinggi: `Menunjukkan penguasaan sangat baik dalam ${combinedTpText}.`,
-      perluBimbingan: `Pertahankan prestasi dan tingkatkan kemandirian dalam pendalaman ${combinedTpText}.`
+      tinggi: `Menunjukkan penguasaan sangat istimewa dalam ${cBest} serta terampil dalam ${cSecond}. Mampu bernalar kritis secara mandiri.`,
+      perluBimbingan: `Pertahankan prestasi unggul dan perluas pengayaan mandiri pada studi kasus aplikatif ${mapel}.`
+    };
+  } else if (nilaiNum >= 80) {
+    return {
+      tinggi: `Menunjukkan penguasaan yang sangat baik dalam ${cBest} dan mampu mengaplikasikan konsep dengan cermat.`,
+      perluBimbingan: `Perlu peningkatan konsistensi dan pendalaman pada ${cNeedHelp}.`
+    };
+  } else if (nilaiNum >= 75) {
+    return {
+      tinggi: `Menunjukkan pemahaman yang cukup baik dan telah mencapai kriteria ketuntasan dalam ${cBest}.`,
+      perluBimbingan: `Perlu pendampingan dan latihan tambahan dalam ${cNeedHelp}.`
     };
   } else {
     return {
-      tinggi: `Menunjukkan kemauan belajar dan pemahaman dasar dalam ${combinedTpText}.`,
-      perluBimbingan: `Perlu peningkatan konsistensi pemahaman dan pendampingan dalam ${combinedTpText}.`
+      tinggi: `Menunjukkan kemauan belajar pada pengenalan materi ${cBest}.`,
+      perluBimbingan: `Sangat membutuhkan bimbingan intensif dan remedial terarah dalam ${cNeedHelp}.`
     };
   }
 }
@@ -1430,64 +1458,6 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
     return map;
   }, [dataNilaiList, selectedKelas, classStudents, activeMapelNames]);
 
-  // Helper to re-sync a report record dynamically with ALL latest TPs from Bank TP for student's class and subject
-  const refreshRecordWithLatestTp = (rec: RaportRecord, studentClass: string): RaportRecord => {
-    if (!rec || !Array.isArray(rec.nilaiMapel)) return rec;
-
-    const selK = (studentClass || rec.kelas || "").toLowerCase().trim();
-
-    const updatedNilaiMapel = rec.nilaiMapel.map((nm) => {
-      const targetMapel = nm.mapel;
-      if (!targetMapel) return nm;
-
-      const finalVal = typeof nm.nilaiAkhir === "number" ? nm.nilaiAkhir : 80;
-
-      // Extract Bank TP items for this subject & class with flexible matching
-      const availableTps = effectiveTpBank[targetMapel] || DEFAULT_TP_TEMPLATES[targetMapel] || [];
-      const mapelBankItems = bankTpList?.filter((b) => {
-        if (!b.mapel || !b.tujuanPembelajaran) return false;
-        const bMapel = b.mapel.toLowerCase().trim();
-        const tMapel = targetMapel.toLowerCase().trim();
-        const matchMapel =
-          bMapel === tMapel ||
-          bMapel.includes(tMapel) ||
-          tMapel.includes(bMapel) ||
-          (bMapel.includes("agama") && tMapel.includes("agama")) ||
-          (bMapel.includes("ipas") && tMapel.includes("ipas")) ||
-          (bMapel.includes("pancasila") && tMapel.includes("pancasila")) ||
-          (bMapel.includes("mtk") && tMapel.includes("matematika")) ||
-          (bMapel.includes("matematika") && tMapel.includes("mtk"));
-
-        if (!matchMapel) return false;
-
-        const itemK = (b.kelas || "").toLowerCase().trim();
-        const isSemua = !b.kelas || itemK === "semua kelas" || itemK === "semua" || itemK === "";
-        const isMatchK = isSemua || itemK === selK || itemK.includes(selK) || selK.includes(itemK);
-        return isMatchK;
-      });
-
-      const desc = generateFallbackDeskripsiFromTp(targetMapel, finalVal, availableTps, mapelBankItems);
-
-      return {
-        ...nm,
-        capaianKompetensiTinggi: desc.tinggi,
-        capaianKompetensiPerluBimbingan: desc.perluBimbingan,
-        deskripsi: desc.tinggi
-      };
-    });
-
-    const defaultEkskul = [
-      { nama: "Pramuka", predikat: "A", keterangan: "Sangat aktif, disiplin, dan memiliki jiwa kepemimpinan yang baik." },
-      { nama: "Pencak Silat", predikat: "B", keterangan: "Menguasai gerakan dasar seni beladiri dengan baik." }
-    ];
-
-    return {
-      ...rec,
-      nilaiMapel: updatedNilaiMapel,
-      ekskul: Array.isArray(rec.ekskul) && rec.ekskul.length > 0 ? rec.ekskul : defaultEkskul
-    };
-  };
-
   // Build or Get Raport Record for a Student with full cloud & local persistence
   const getRaportForStudent = (siswa: Siswa): RaportRecord => {
     const cleanTahun = selectedTahunAjaran.replace(/\//g, "-");
@@ -1496,65 +1466,52 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
     const altDocId2 = `raport_${siswa.id}_${selectedPeriode}`;
     const altDocId3 = `raport_${siswa.id}`;
 
-    let baseRecord: RaportRecord | undefined;
-
     // 1. Check in-memory state for any matching key
-    if (raportRecords[primaryDocId]) baseRecord = raportRecords[primaryDocId];
-    else if (raportRecords[altDocId1]) baseRecord = { ...raportRecords[altDocId1], id: primaryDocId };
-    else if (raportRecords[altDocId2]) baseRecord = { ...raportRecords[altDocId2], id: primaryDocId };
-    else if (raportRecords[altDocId3]) baseRecord = { ...raportRecords[altDocId3], id: primaryDocId };
-    else {
-      // 1b. Search in-memory state values for matching student ID & period
-      const foundInState = Object.values(raportRecords).find(
-        (r: RaportRecord) => r && r.idSiswa === siswa.id && (r.periode === selectedPeriode || !r.periode)
-      );
-      if (foundInState) {
-        baseRecord = { ...(foundInState as RaportRecord), id: primaryDocId };
-      }
+    if (raportRecords[primaryDocId]) return raportRecords[primaryDocId];
+    if (raportRecords[altDocId1]) return { ...raportRecords[altDocId1], id: primaryDocId };
+    if (raportRecords[altDocId2]) return { ...raportRecords[altDocId2], id: primaryDocId };
+    if (raportRecords[altDocId3]) return { ...raportRecords[altDocId3], id: primaryDocId };
+
+    // 1b. Search in-memory state values for matching student ID & period
+    const foundInState = Object.values(raportRecords).find(
+      (r: RaportRecord) => r && r.idSiswa === siswa.id && (r.periode === selectedPeriode || !r.periode)
+    );
+    if (foundInState) {
+      return { ...(foundInState as RaportRecord), id: primaryDocId };
     }
 
-    // 2. Check localStorage cache if not found in state
-    if (!baseRecord) {
-      try {
-        const cachedStr = localStorage.getItem("edadmin_persisted_raport_records");
-        if (cachedStr) {
-          const cachedMap = JSON.parse(cachedStr);
-          if (cachedMap[primaryDocId]) baseRecord = cachedMap[primaryDocId];
-          else if (cachedMap[altDocId1]) baseRecord = { ...cachedMap[altDocId1], id: primaryDocId };
-          else if (cachedMap[altDocId2]) baseRecord = { ...cachedMap[altDocId2], id: primaryDocId };
-          else {
-            const foundInCache = Object.values(cachedMap).find(
-              (r: any) => r && r.idSiswa === siswa.id && (r.periode === selectedPeriode || !r.periode)
-            ) as RaportRecord | undefined;
-            if (foundInCache) {
-              baseRecord = { ...foundInCache, id: primaryDocId };
-            }
-          }
+    // 2. Check localStorage cache
+    try {
+      const cachedStr = localStorage.getItem("edadmin_persisted_raport_records");
+      if (cachedStr) {
+        const cachedMap = JSON.parse(cachedStr);
+        if (cachedMap[primaryDocId]) return cachedMap[primaryDocId];
+        if (cachedMap[altDocId1]) return { ...cachedMap[altDocId1], id: primaryDocId };
+        if (cachedMap[altDocId2]) return { ...cachedMap[altDocId2], id: primaryDocId };
+
+        const foundInCache = Object.values(cachedMap).find(
+          (r: any) => r && r.idSiswa === siswa.id && (r.periode === selectedPeriode || !r.periode)
+        ) as RaportRecord | undefined;
+        if (foundInCache) {
+          return { ...foundInCache, id: primaryDocId };
         }
-      } catch {}
-    }
-
-    // 3. Check if exists in bukuIndukList (cloud data) if not found in state or cache
-    if (!baseRecord) {
-      const existingBiDoc = bukuIndukList?.find(
-        (b: any) =>
-          (b.id === primaryDocId || b.id === altDocId1 || b.id === altDocId2 || b.id === altDocId3 || (b.idSiswa === siswa.id && (b.periode === selectedPeriode || !b.periode))) &&
-          Array.isArray(b.nilaiMapel) &&
-          b.nilaiMapel.length > 0
-      ) as RaportRecord | undefined;
-
-      if (existingBiDoc && Array.isArray(existingBiDoc.nilaiMapel) && existingBiDoc.nilaiMapel.length > 0) {
-        baseRecord = {
-          ...existingBiDoc,
-          id: primaryDocId,
-          tahunAjaran: selectedTahunAjaran
-        };
       }
-    }
+    } catch {}
 
-    // If record exists, refresh descriptions with ALL current Bank TPs and return
-    if (baseRecord) {
-      return refreshRecordWithLatestTp(baseRecord, siswa.kelas);
+    // 3. Check if exists in bukuIndukList (cloud data)
+    const existingBiDoc = bukuIndukList?.find(
+      (b: any) =>
+        (b.id === primaryDocId || b.id === altDocId1 || b.id === altDocId2 || b.id === altDocId3 || (b.idSiswa === siswa.id && (b.periode === selectedPeriode || !b.periode))) &&
+        Array.isArray(b.nilaiMapel) &&
+        b.nilaiMapel.length > 0
+    ) as RaportRecord | undefined;
+
+    if (existingBiDoc && Array.isArray(existingBiDoc.nilaiMapel) && existingBiDoc.nilaiMapel.length > 0) {
+      return {
+        ...existingBiDoc,
+        id: primaryDocId,
+        tahunAjaran: selectedTahunAjaran
+      };
     }
 
     // 4. Fallback baseline: only generated if never saved before
@@ -1580,30 +1537,11 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
         }
       }
 
-      // Filter Bank TP strictly by mapel & student class
+      // Check if we have Bank TP for this mapel
       const availableTps = effectiveTpBank[mapel] || DEFAULT_TP_TEMPLATES[mapel] || [];
-      const mapelBankItems = bankTpList?.filter((b) => {
-        if (!b.mapel || !b.tujuanPembelajaran) return false;
-        const bMapel = b.mapel.toLowerCase().trim();
-        const tMapel = mapel.toLowerCase().trim();
-        const matchMapel =
-          bMapel === tMapel ||
-          bMapel.includes(tMapel) ||
-          tMapel.includes(bMapel) ||
-          (bMapel.includes("agama") && tMapel.includes("agama")) ||
-          (bMapel.includes("ipas") && tMapel.includes("ipas")) ||
-          (bMapel.includes("pancasila") && tMapel.includes("pancasila")) ||
-          (bMapel.includes("mtk") && tMapel.includes("matematika")) ||
-          (bMapel.includes("matematika") && tMapel.includes("mtk"));
-
-        if (!matchMapel) return false;
-
-        const itemK = (b.kelas || "").toLowerCase().trim();
-        const selK = (siswa.kelas || "").toLowerCase().trim();
-        return !b.kelas || itemK === "semua kelas" || itemK === "semua" || itemK === "" || itemK === selK || itemK.includes(selK) || selK.includes(itemK);
-      });
-
-      const desc = generateFallbackDeskripsiFromTp(mapel, finalVal, availableTps, mapelBankItems);
+      const desc = availableTps.length > 0
+        ? generateFallbackDeskripsiFromTp(mapel, finalVal, availableTps)
+        : generateDefaultDeskripsi(mapel, finalVal);
 
       return {
         mapel,
@@ -2151,13 +2089,13 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
     }
   };
 
-  // Export PDF with jsPDF on F4 / Folio Paper Format [215.9mm x 330.2mm]
+  // Export PDF with jsPDF
   const handleExportPDF = () => {
     try {
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
-        format: [215.9, 330.2] // Official F4 / Folio Paper Format
+        format: "a4"
       });
 
       const targetStudents = selectedSiswaId === "all"
@@ -2169,310 +2107,172 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
         return;
       }
 
-      const pageWidth = 215.9;
-      const pageHeight = 330.2;
-      const centerX = pageWidth / 2;
-
       targetStudents.forEach((student, index) => {
-        if (index > 0) doc.addPage([215.9, 330.2], "portrait");
+        if (index > 0) doc.addPage();
 
         const studentRaport = getRaportForStudent(student);
 
-        // -------------------------------------------------------------
-        // RENDER COVER PAGE (If printMode is 'full' or 'cover')
-        // -------------------------------------------------------------
-        if (printMode === "full" || printMode === "cover") {
-          // Double Border Line for Cover
-          doc.setLineWidth(1.2);
-          doc.rect(12, 12, pageWidth - 24, pageHeight - 24);
-          doc.setLineWidth(0.4);
-          doc.rect(14, 14, pageWidth - 28, pageHeight - 28);
-
-          // Top Header
-          let coverY = 32;
-          doc.setFontSize(10);
-          doc.setFont("helvetica", "bold");
-          doc.text((config.Pemerintah || "PEMERINTAH KABUPATEN BOGOR").toUpperCase(), centerX, coverY, { align: "center" });
-          coverY += 5;
-          doc.text((config.Dinas || "DINAS PENDIDIKAN").toUpperCase(), centerX, coverY, { align: "center" });
-          coverY += 8;
-          doc.setFontSize(14);
-          doc.text((config.Nama_Sekolah || "SD NEGERI BABAKAN 04").toUpperCase(), centerX, coverY, { align: "center" });
-          coverY += 8;
-          doc.setFontSize(12);
-          doc.text("LAPORAN HASIL BELAJAR PESERTA DIDIK", centerX, coverY, { align: "center" });
-          coverY += 5;
-          doc.setFontSize(10);
-          doc.setFont("helvetica", "normal");
-          doc.text("( RAPOR KURIKULUM MERDEKA )", centerX, coverY, { align: "center" });
-
-          // Logo Center
-          coverY += 30;
+        // Header Kop Dinas Resmi
+        let topY = 12;
+        if (showKopSekolah) {
           if (config.Logo_Kiri) {
             try {
-              doc.addImage(config.Logo_Kiri, "PNG", centerX - 20, coverY, 40, 40);
+              doc.addImage(config.Logo_Kiri, "PNG", 14, 10, 16, 16);
             } catch (e) {}
           }
-          coverY += 50;
-
-          // Periode & Tahun
-          doc.setFontSize(12);
-          doc.setFont("helvetica", "bold");
-          doc.text(studentRaport.periodeNama.toUpperCase(), centerX, coverY, { align: "center" });
-          coverY += 6;
-          doc.setFontSize(10);
-          doc.setFont("helvetica", "normal");
-          doc.text(`Tahun Ajaran ${studentRaport.tahunAjaran}`, centerX, coverY, { align: "center" });
-
-          // Identitas Box
-          coverY += 25;
-          const boxX = 35;
-          const boxW = pageWidth - 70;
-          const boxH = 45;
-          doc.rect(boxX, coverY, boxW, boxH);
-
-          let idY = coverY + 10;
-          doc.setFontSize(9.5);
-          doc.setFont("helvetica", "bold");
-          doc.text("Nama Siswa", boxX + 8, idY);
-          doc.text(`:  ${student.nama.toUpperCase()}`, boxX + 45, idY);
-          idY += 7;
-          doc.setFont("helvetica", "normal");
-          doc.text("NISN / NIS", boxX + 8, idY);
-          doc.text(`:  ${student.nisn || "-"} / ${student.nis || "-"}`, boxX + 45, idY);
-          idY += 7;
-          doc.text("Kelas / Fase", boxX + 8, idY);
-          doc.text(`:  ${student.kelas} / ${studentRaport.fase}`, boxX + 45, idY);
-          idY += 7;
-          doc.text("Nama Sekolah", boxX + 8, idY);
-          doc.setFont("helvetica", "bold");
-          doc.text(`:  ${config.Nama_Sekolah || "SD NEGERI BABAKAN 04"}`, boxX + 45, idY);
-          idY += 7;
-          doc.setFont("helvetica", "normal");
-          doc.text("NPSN", boxX + 8, idY);
-          doc.text(`:  ${config.NPSN || "20200889"}`, boxX + 45, idY);
-
-          // Footer Cover
-          coverY = pageHeight - 35;
-          doc.setFontSize(9);
-          doc.setFont("helvetica", "bold");
-          doc.text((config.Nama_Sekolah || "SD NEGERI BABAKAN 04").toUpperCase(), centerX, coverY, { align: "center" });
-          coverY += 4.5;
-          doc.setFontSize(8);
-          doc.setFont("helvetica", "normal");
-          doc.text(config.Alamat_Sekolah || "Kp. Babakan Kulon RT.05/02 Desa Babakan Kec. Ciseeng Kab. Bogor", centerX, coverY, { align: "center" });
-
-          // If mode is 'full', add page for Lembar Nilai
-          if (printMode === "full") {
-            doc.addPage([215.9, 330.2], "portrait");
+          if (config.Logo_Kanan) {
+            try {
+              doc.addImage(config.Logo_Kanan, "PNG", 180, 10, 16, 16);
+            } catch (e) {}
           }
+
+          doc.setFontSize(10);
+          doc.setFont("helvetica", "bold");
+          doc.text((config.Pemerintah || "PEMERINTAH KABUPATEN BOGOR").toUpperCase(), 105, topY, { align: "center" });
+          doc.text((config.Dinas || "DINAS PENDIDIKAN").toUpperCase(), 105, topY + 4.5, { align: "center" });
+          doc.setFontSize(13);
+          doc.text((config.Nama_Sekolah || "SD NEGERI BABAKAN 04").toUpperCase(), 105, topY + 9.5, { align: "center" });
+          doc.setFontSize(7.5);
+          doc.setFont("helvetica", "normal");
+          const alamatFull = `${config.Alamat_Sekolah || "Kp. Babakan Kulon RT.05/02 Desa Babakan Kec. Ciseeng Kab. Bogor"}${config.NPSN ? ` • NPSN: ${config.NPSN}` : ""}${config.Email_Sekolah ? ` • Email: ${config.Email_Sekolah}` : ""}`;
+          doc.text(alamatFull, 105, topY + 14, { align: "center" });
+          
+          // Garis Ganda Kop Surat
+          doc.setLineWidth(0.6);
+          doc.line(14, topY + 17, 196, topY + 17);
+          doc.setLineWidth(0.2);
+          doc.line(14, topY + 18, 196, topY + 18);
         }
 
-        // -------------------------------------------------------------
-        // RENDER LEMBAR NILAI (If printMode is 'full' or 'lembar_nilai')
-        // -------------------------------------------------------------
-        if (printMode === "full" || printMode === "lembar_nilai") {
-          let topY = 12;
+        // Raport Title
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text("LAPORAN HASIL BELAJAR (RAPOR)", 105, 36, { align: "center" });
+        doc.setFontSize(8.5);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Periode: ${studentRaport.periodeNama} | Tahun Ajaran: ${studentRaport.tahunAjaran}`, 105, 41, { align: "center" });
 
-          // Header Kop Dinas Resmi
-          if (showKopSekolah) {
-            if (config.Logo_Kiri) {
-              try {
-                doc.addImage(config.Logo_Kiri, "PNG", 14, 10, 16, 16);
-              } catch (e) {}
-            }
-            if (config.Logo_Kanan) {
-              try {
-                doc.addImage(config.Logo_Kanan, "PNG", pageWidth - 30, 10, 16, 16);
-              } catch (e) {}
-            }
+        // Identitas Siswa
+        doc.setFontSize(8.5);
+        doc.text(`Nama Peserta Didik : ${student.nama}`, 14, 49);
+        doc.text(`NISN / NIS          : ${student.nisn || '-'} / ${student.nis || '-'}`, 14, 54);
+        doc.text(`Kelas / Fase       : ${student.kelas} / ${studentRaport.fase}`, 130, 49);
+        doc.text(`Semester            : ${studentRaport.semester}`, 130, 54);
 
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "bold");
-            doc.text((config.Pemerintah || "PEMERINTAH KABUPATEN BOGOR").toUpperCase(), centerX, topY, { align: "center" });
-            doc.text((config.Dinas || "DINAS PENDIDIKAN").toUpperCase(), centerX, topY + 4.5, { align: "center" });
-            doc.setFontSize(13);
-            doc.text((config.Nama_Sekolah || "SD NEGERI BABAKAN 04").toUpperCase(), centerX, topY + 9.5, { align: "center" });
-            doc.setFontSize(7.5);
-            doc.setFont("helvetica", "normal");
-            const alamatFull = `${config.Alamat_Sekolah || "Kp. Babakan Kulon RT.05/02 Desa Babakan Kec. Ciseeng Kab. Bogor"}${config.NPSN ? ` • NPSN: ${config.NPSN}` : ""}${config.Email_Sekolah ? ` • Email: ${config.Email_Sekolah}` : ""}`;
-            doc.text(alamatFull, centerX, topY + 14, { align: "center" });
-
-            // Garis Ganda Kop Surat
-            doc.setLineWidth(0.6);
-            doc.line(14, topY + 17, pageWidth - 14, topY + 17);
-            doc.setLineWidth(0.2);
-            doc.line(14, topY + 18, pageWidth - 14, topY + 18);
-            topY += 22;
-          } else {
-            topY = 14;
-          }
-
-          // Raport Title
-          doc.setFontSize(11);
-          doc.setFont("helvetica", "bold");
-          doc.text("LAPORAN HASIL BELAJAR (RAPOR)", centerX, topY, { align: "center" });
-          doc.setFontSize(8.5);
-          doc.setFont("helvetica", "normal");
-          doc.text(`Periode: ${studentRaport.periodeNama} | Tahun Ajaran: ${studentRaport.tahunAjaran}`, centerX, topY + 5, { align: "center" });
-
-          // Identitas Siswa Header
-          let idHeaderY = topY + 11;
-          doc.setFontSize(8.5);
-          doc.text(`Nama Peserta Didik : ${student.nama}`, 14, idHeaderY);
-          doc.text(`NISN / NIS          : ${student.nisn || "-"} / ${student.nis || "-"}`, 14, idHeaderY + 4.5);
-          doc.text(`Kelas / Fase       : ${student.kelas} / ${studentRaport.fase}`, 135, idHeaderY);
-          doc.text(`Semester            : ${studentRaport.semester}`, 135, idHeaderY + 4.5);
-
-          // Tabel Nilai
-          const mapelOrderLookup = new Map<string, number>(displayMapelNames.map((m, idx) => [m.toLowerCase(), idx]));
-          const filteredNilaiMapel = studentRaport.nilaiMapel
-            .filter((nm) => mapelOrderLookup.has(nm.mapel.toLowerCase()))
-            .sort((a, b) => {
-              const posA = mapelOrderLookup.get(a.mapel.toLowerCase()) ?? 999;
-              const posB = mapelOrderLookup.get(b.mapel.toLowerCase()) ?? 999;
-              return posA - posB;
-            });
-          const finalNilaiMapel = filteredNilaiMapel.length > 0 ? filteredNilaiMapel : studentRaport.nilaiMapel;
-
-          const tableBody = finalNilaiMapel.map((nm, i) => [
-            i + 1,
-            nm.mapel,
-            nm.nilaiAkhir,
-            nm.capaianKompetensiTinggi || nm.deskripsi || "-"
-          ]);
-
-          autoTable(doc, {
-            startY: idHeaderY + 8,
-            head: [["No", "Mata Pelajaran", "Nilai Akhir", "Capaian Kompetensi / Keterangan"]],
-            body: tableBody,
-            theme: "grid",
-            headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold", fontSize: 8, halign: "center" },
-            styles: { fontSize: 7.5, cellPadding: 1.3 },
-            columnStyles: {
-              0: { cellWidth: 10, halign: "center" },
-              1: { cellWidth: 55 },
-              2: { cellWidth: 20, halign: "center", fontStyle: "bold" },
-              3: { cellWidth: 102.9 }
-            }
+        // Tabel Nilai (Hanya Mapel yang Dicentang, Diurutkan Sesuai Nomor Urut)
+        const mapelOrderLookup = new Map<string, number>(displayMapelNames.map((m, idx) => [m.toLowerCase(), idx]));
+        const filteredNilaiMapel = studentRaport.nilaiMapel
+          .filter((nm) => mapelOrderLookup.has(nm.mapel.toLowerCase()))
+          .sort((a, b) => {
+            const posA = mapelOrderLookup.get(a.mapel.toLowerCase()) ?? 999;
+            const posB = mapelOrderLookup.get(b.mapel.toLowerCase()) ?? 999;
+            return posA - posB;
           });
+        const finalNilaiMapel = filteredNilaiMapel.length > 0 ? filteredNilaiMapel : studentRaport.nilaiMapel;
 
-          let currentY = (doc as any).lastAutoTable.finalY + 4;
+        const tableBody = finalNilaiMapel.map((nm, i) => [
+          i + 1,
+          nm.mapel,
+          nm.nilaiAkhir,
+          nm.capaianKompetensiTinggi || nm.deskripsi || "-"
+        ]);
 
-          // B. Ekstrakurikuler Table
-          const activeEkskul = (studentRaport.ekskul || []).filter((ek) => ek && (ek.nama || ek.keterangan));
-          if (activeEkskul.length > 0) {
-            const ekskulRows = activeEkskul.map((ek, i) => [
-              i + 1,
-              ek.nama || "Pramuka",
-              ek.predikat || "A",
-              ek.keterangan || "-"
-            ]);
-
-            doc.setFontSize(8);
-            doc.setFont("helvetica", "bold");
-            doc.text("B. Kegiatan Ekstrakurikuler", 14, currentY);
-
-            autoTable(doc, {
-              startY: currentY + 1.5,
-              head: [["No", "Kegiatan Ekstrakurikuler", "Predikat", "Keterangan"]],
-              body: ekskulRows,
-              theme: "grid",
-              headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold", fontSize: 7.5, halign: "center" },
-              styles: { fontSize: 7.5, cellPadding: 1.2 },
-              columnStyles: {
-                0: { cellWidth: 10, halign: "center" },
-                1: { cellWidth: 55 },
-                2: { cellWidth: 20, halign: "center", fontStyle: "bold" },
-                3: { cellWidth: 102.9 }
-              }
-            });
-
-            currentY = (doc as any).lastAutoTable.finalY + 5;
+        autoTable(doc, {
+          startY: 60,
+          head: [["No", "Mata Pelajaran", "Nilai Akhir", "Capaian Kompetensi / Keterangan"]],
+          body: tableBody,
+          theme: "grid",
+          headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold", fontSize: 8, halign: "center" },
+          styles: { fontSize: 8, cellPadding: 2 },
+          columnStyles: {
+            0: { cellWidth: 10, halign: "center" },
+            1: { cellWidth: 55 },
+            2: { cellWidth: 20, halign: "center", fontStyle: "bold" },
+            3: { cellWidth: 95 }
           }
+        });
 
-          // C. Ketidakhadiran & Catatan
-          doc.setFontSize(8.5);
+        let currentY = (doc as any).lastAutoTable.finalY + 6;
+
+        // Absensi & Ekstrakurikuler Table
+        const attRows = [
+          ["Sakit", `${studentRaport.kehadiran.sakit} hari`],
+          ["Izin", `${studentRaport.kehadiran.izin} hari`],
+          ["Tanpa Keterangan (Alpa)", `${studentRaport.kehadiran.alpa} hari`]
+        ];
+
+        autoTable(doc, {
+          startY: currentY,
+          head: [["Ketidakhadiran", "Jumlah"]],
+          body: attRows,
+          theme: "grid",
+          margin: { left: 15, right: 120 },
+          headStyles: { fillColor: [71, 85, 105], textColor: 255, fontSize: 8, halign: "center" },
+          styles: { fontSize: 8, cellPadding: 1.5 }
+        });
+
+        // Catatan Wali Kelas Box
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.text("Catatan Wali Kelas:", 95, currentY + 3);
+        doc.setFont("helvetica", "normal");
+        const splitCatatan = doc.splitTextToSize(studentRaport.catatanWaliKelas, 100);
+        doc.text(splitCatatan, 95, currentY + 8);
+
+        // Kenaikan Kelas jika Semester Genap
+        if (studentRaport.statusKenaikan) {
           doc.setFont("helvetica", "bold");
-          doc.text("C. Ketidakhadiran", 14, currentY);
+          doc.text(`Keputusan: ${studentRaport.statusKenaikan.status} (${studentRaport.statusKenaikan.keKelas || ''})`, 95, currentY + 22);
+        }
 
-          const attRows = [
-            ["Sakit (S)", `${studentRaport.kehadiran.sakit} hari`],
-            ["Izin (I)", `${studentRaport.kehadiran.izin} hari`],
-            ["Tanpa Keterangan (Alpa)", `${studentRaport.kehadiran.alpa} hari`]
-          ];
+        // Tanda Tangan
+        const ttdY = currentY + 32;
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
 
-          autoTable(doc, {
-            startY: currentY + 2,
-            head: [["Ketidakhadiran", "Jumlah"]],
-            body: attRows,
-            theme: "grid",
-            margin: { left: 14, right: 115 },
-            headStyles: { fillColor: [71, 85, 105], textColor: 255, fontSize: 8, halign: "center" },
-            styles: { fontSize: 8, cellPadding: 1.5 }
-          });
+        if (showTtdKepsek) {
+          // 3 Kolom: Orang Tua (kiri: x=25), Kepala Sekolah (tengah: x=105), Guru Kelas (kanan: x=145)
+          doc.text("Mengetahui,", 25, ttdY);
+          doc.text("Orang Tua / Wali Siswa,", 25, ttdY + 4);
+          doc.text("( .................................... )", 25, ttdY + 22);
 
-          // Catatan Wali Kelas Box
-          doc.setFontSize(8);
+          doc.text("Mengetahui,", 105, ttdY, { align: "center" });
+          doc.text("Kepala Sekolah,", 105, ttdY + 4, { align: "center" });
           doc.setFont("helvetica", "bold");
-          doc.text("D. Catatan Wali Kelas:", 115, currentY + 2);
+          doc.text(studentRaport.namaKepsek || config.Nama_Kepala_Sekolah || "SUBUR, S.Pd.SD.", 105, ttdY + 20, { align: "center" });
           doc.setFont("helvetica", "normal");
-          const splitCatatan = doc.splitTextToSize(studentRaport.catatanWaliKelas, 86);
-          doc.text(splitCatatan, 115, currentY + 7);
+          doc.text(`NIP. ${studentRaport.nipKepsek || config.NIP_Kepala_Sekolah || "197002111993081001"}`, 105, ttdY + 24, { align: "center" });
 
-          // Kenaikan Kelas jika Semester Genap
-          if (studentRaport.statusKenaikan) {
-            doc.setFont("helvetica", "bold");
-            doc.text(`Keputusan: ${studentRaport.statusKenaikan.status} (${studentRaport.statusKenaikan.keKelas || ''})`, 115, currentY + 22);
-          }
+          const tglFormatted = formatTanggalIndonesia(studentRaport.tanggalRaport || tanggalRaport);
+          const tempatTtd = studentRaport.tempatTitimangsa || tempatTitimangsa || config.Tempat_Tanda_Tangan || "Kab. Bogor";
 
-          // Tanda Tangan
-          const ttdY = Math.max((doc as any).lastAutoTable.finalY + 8, currentY + 26);
-          doc.setFontSize(8);
+          doc.text(`${tempatTtd}, ${tglFormatted}`, 145, ttdY);
+          doc.text("Guru Kelas / Wali Kelas,", 145, ttdY + 4);
+          doc.setFont("helvetica", "bold");
+          doc.text(studentRaport.namaGuruWali || currentUser.name || "Eri Iriana Rifai, S.Kom.", 145, ttdY + 20);
           doc.setFont("helvetica", "normal");
+          doc.text(`NIP. ${studentRaport.nipGuruWali || "-"}`, 145, ttdY + 24);
+        } else {
+          // 2 Kolom Seimbang: Orang Tua (kiri: x=25), Guru Kelas (kanan: x=145)
+          const tglFormatted = formatTanggalIndonesia(studentRaport.tanggalRaport || tanggalRaport);
+          const tempatTtd = studentRaport.tempatTitimangsa || tempatTitimangsa || config.Tempat_Tanda_Tangan || "Kab. Bogor";
 
-          if (showTtdKepsek) {
-            doc.text("Mengetahui,", 25, ttdY);
-            doc.text("Orang Tua / Wali Siswa,", 25, ttdY + 4);
-            doc.text("( .................................... )", 25, ttdY + 20);
+          doc.text("Mengetahui,", 25, ttdY);
+          doc.text("Orang Tua / Wali Siswa,", 25, ttdY + 4);
+          doc.text("( .................................... )", 25, ttdY + 22);
 
-            doc.text("Mengetahui,", centerX, ttdY, { align: "center" });
-            doc.text("Kepala Sekolah,", centerX, ttdY + 4, { align: "center" });
-            doc.setFont("helvetica", "bold");
-            doc.text(studentRaport.namaKepsek || config.Nama_Kepala_Sekolah || "SUBUR, S.Pd.SD.", centerX, ttdY + 18, { align: "center" });
-            doc.setFont("helvetica", "normal");
-            doc.text(`NIP. ${studentRaport.nipKepsek || config.NIP_Kepala_Sekolah || "197002111993081001"}`, centerX, ttdY + 22, { align: "center" });
-
-            const tglFormatted = formatTanggalIndonesia(studentRaport.tanggalRaport || tanggalRaport);
-            const tempatTtd = studentRaport.tempatTitimangsa || tempatTitimangsa || config.Tempat_Tanda_Tangan || "Kab. Bogor";
-
-            doc.text(`${tempatTtd}, ${tglFormatted}`, 150, ttdY);
-            doc.text("Guru Kelas / Wali Kelas,", 150, ttdY + 4);
-            doc.setFont("helvetica", "bold");
-            doc.text(studentRaport.namaGuruWali || currentUser.name || "Eri Iriana Rifai, S.Kom.", 150, ttdY + 18);
-            doc.setFont("helvetica", "normal");
-            doc.text(`NIP. ${studentRaport.nipGuruWali || "-"}`, 150, ttdY + 22);
-          } else {
-            const tglFormatted = formatTanggalIndonesia(studentRaport.tanggalRaport || tanggalRaport);
-            const tempatTtd = studentRaport.tempatTitimangsa || tempatTitimangsa || config.Tempat_Tanda_Tangan || "Kab. Bogor";
-
-            doc.text("Mengetahui,", 25, ttdY);
-            doc.text("Orang Tua / Wali Siswa,", 25, ttdY + 4);
-            doc.text("( .................................... )", 25, ttdY + 20);
-
-            doc.text(`${tempatTtd}, ${tglFormatted}`, 150, ttdY);
-            doc.text("Guru Kelas / Wali Kelas,", 150, ttdY + 4);
-            doc.setFont("helvetica", "bold");
-            doc.text(studentRaport.namaGuruWali || currentUser.name || "Eri Iriana Rifai, S.Kom.", 150, ttdY + 18);
-            doc.setFont("helvetica", "normal");
-            doc.text(`NIP. ${studentRaport.nipGuruWali || "-"}`, 150, ttdY + 22);
-          }
+          doc.text(`${tempatTtd}, ${tglFormatted}`, 145, ttdY);
+          doc.text("Guru Kelas / Wali Kelas,", 145, ttdY + 4);
+          doc.setFont("helvetica", "bold");
+          doc.text(studentRaport.namaGuruWali || currentUser.name || "Eri Iriana Rifai, S.Kom.", 145, ttdY + 20);
+          doc.setFont("helvetica", "normal");
+          doc.text(`NIP. ${studentRaport.nipGuruWali || "-"}`, 145, ttdY + 24);
         }
       });
 
       const cleanName = selectedSiswaId === "all" ? `Semua_Siswa_${selectedKelas}` : targetStudents[0]?.nama.replace(/\s+/g, "_");
-      doc.save(`Raport_F4_${cleanName}_${currentPeriodeInfo.short}_${selectedTahunAjaran.replace(/\//g, "-")}.pdf`);
-      notifyUnduhSuccess("Dokumen Raport PDF Ukuran F4 / Folio berhasil dibuat dan diunduh!");
+      doc.save(`Raport_${cleanName}_${currentPeriodeInfo.short}_${selectedTahunAjaran.replace(/\//g, "-")}.pdf`);
+      notifyUnduhSuccess("Dokumen Raport PDF berhasil dibuat dan diunduh!");
     } catch (err: any) {
       notifyUnduhError("Gagal membuat PDF Raport: " + (err?.message || "Error"));
     }
@@ -3076,58 +2876,13 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                 return (
                   <div 
                     key={student.id} 
-                    className={`bg-white text-black p-6 sm:p-10 rounded-2xl shadow-md border border-slate-200 mx-auto max-w-[215.9mm] min-h-[330mm] print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none print:min-h-0 ${
+                    className={`bg-white text-black p-8 sm:p-12 rounded-2xl shadow-md border border-slate-200 mx-auto max-w-[210mm] min-h-[297mm] print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none ${
                       sIdx > 0 ? "print:break-before-page" : ""
                     }`}
                   >
-                    {/* Inject Print Styles for Official F4 / Folio Paper Size */}
-                    <style>{`
-                      @media print {
-                        @page {
-                          size: 215.9mm 330.2mm;
-                          margin: 6mm 8mm;
-                        }
-                        body {
-                          background-color: white !important;
-                          color: black !important;
-                          -webkit-print-color-adjust: exact !important;
-                          print-color-adjust: exact !important;
-                        }
-                        .f4-cover-page {
-                          height: 310mm !important;
-                          max-height: 312mm !important;
-                          page-break-after: always !important;
-                          break-after: page !important;
-                          overflow: hidden !important;
-                          box-sizing: border-box !important;
-                        }
-                        .f4-nilai-page {
-                          min-height: 300mm !important;
-                          max-height: 314mm !important;
-                          page-break-after: always !important;
-                          break-after: page !important;
-                          box-sizing: border-box !important;
-                        }
-                        .print\\:break-after-page {
-                          page-break-after: always !important;
-                          break-after: page !important;
-                        }
-                        .print\\:break-before-page {
-                          page-break-before: always !important;
-                          break-before: page !important;
-                        }
-                        table {
-                          page-break-inside: avoid !important;
-                        }
-                        tr {
-                          page-break-inside: avoid !important;
-                        }
-                      }
-                    `}</style>
-
                     {/* COVER PAGE (Rendered if mode is full or cover) */}
                     {(printMode === "full" || printMode === "cover") && (
-                      <div className="f4-cover-page flex flex-col justify-between min-h-[295mm] max-h-[310mm] border-4 border-double border-slate-800 p-6 sm:p-8 text-center mb-8 print:mb-0 print:break-after-page">
+                      <div className="flex flex-col justify-between min-h-[260mm] border-4 border-double border-slate-800 p-8 text-center mb-8 print:mb-0 print:break-after-page">
                         {/* Top School Header */}
                         <div className="space-y-1.5">
                           <p className="text-xs font-bold uppercase tracking-widest text-slate-700">
@@ -3211,7 +2966,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
 
                     {/* LEMBAR NILAI CAPAIAN HASIL BELAJAR */}
                     {(printMode === "full" || printMode === "lembar_nilai") && (
-                      <div className="f4-nilai-page space-y-4 print:space-y-3">
+                      <div className="space-y-6">
                         {/* Kop Surat Resmi */}
                         {showKopSekolah && (
                           <KopSuratDinas 
