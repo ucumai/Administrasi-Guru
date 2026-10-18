@@ -18,7 +18,7 @@ import { Siswa, Mapel, DataNilai, Pengaturan, User, BankTpItem, RaportRecord } f
 import { batchSaveDocuments, saveDocument, COLLECTIONS } from "../lib/firebase";
 import { getAllowedClasses } from "../lib/accessControl";
 import { notifySimpanSuccess, notifySimpanError } from "../lib/swal";
-import { DEFAULT_TP_TEMPLATES, cleanTpText } from "./CetakRaportView";
+import { DEFAULT_TP_TEMPLATES, cleanTpText, filterBankTpItems, generateDynamicTpDescription } from "../lib/tpUtils";
 import { getClassActiveSubjects } from "../lib/classSubjectUtils";
 
 interface InputPenilaianViewProps {
@@ -115,25 +115,20 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
   const availableTps = useMemo(() => {
     const list: Array<{ id: string; kode?: string; text: string; kategori?: string }> = [];
 
-    // 1. From Bank TP (filtered by mapel and class if applicable)
-    if (bankTpList && bankTpList.length > 0) {
-      bankTpList
-        .filter((item) => {
-          const matchMapel = item.mapel.toLowerCase() === selectedMapel.toLowerCase();
-          const matchKelas = !item.kelas || item.kelas === "Semua Kelas" || item.kelas === selectedKelas;
-          return matchMapel && matchKelas;
-        })
-        .forEach((b) => {
-          list.push({
-            id: b.id,
-            kode: b.kodeTp,
-            text: b.tujuanPembelajaran,
-            kategori: b.kategori
-          });
-        });
-    }
+    // 1. From Bank TP (filtered by mapel, kelas, and active semester)
+    const currentSemester = config?.Semester || "Ganjil";
+    const filteredBank = filterBankTpItems(bankTpList, selectedMapel, selectedKelas, currentSemester);
 
-    // 2. From Default Kurikulum Merdeka templates if Bank TP is empty for this mapel
+    filteredBank.forEach((b) => {
+      list.push({
+        id: b.id,
+        kode: b.kodeTp,
+        text: b.tujuanPembelajaran,
+        kategori: b.kategori
+      });
+    });
+
+    // 2. From Default Kurikulum Merdeka templates if Bank TP is empty for this mapel & class
     const templates = DEFAULT_TP_TEMPLATES[selectedMapel] || [];
     templates.forEach((t, idx) => {
       if (!list.some((existing) => existing.text.toLowerCase() === t.toLowerCase())) {
@@ -141,13 +136,13 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
           id: `tpl_${idx}`,
           kode: `TP ${idx + 1}`,
           text: t,
-          kategori: idx === 0 ? "Tinggi" : idx === 1 ? "Sedang" : "Dasar"
+          kategori: idx === 0 ? "Tinggi" : idx === 1 ? "Sedang" : "Bimbingan"
         });
       }
     });
 
     return list;
-  }, [bankTpList, selectedMapel, selectedKelas]);
+  }, [bankTpList, selectedMapel, selectedKelas, config?.Semester]);
 
   // Set default selected TP when mapel changes
   useEffect(() => {
@@ -193,17 +188,15 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
       return "";
     }
     const val = Number(grade);
-    const cleaned = cleanTpText(tpText, selectedMapel || "materi pokok");
-
-    if (val >= 90) {
-      return `Menunjukkan penguasaan sangat baik dan optimal dalam ${cleaned}. Mampu bernalar kritis secara mandiri.`;
-    } else if (val >= 80) {
-      return `Menunjukkan penguasaan materi yang baik dan tuntas dalam ${cleaned}.`;
-    } else if (val >= 75) {
-      return `Telah mencapai kriteria ketuntasan tujuan pembelajaran dalam ${cleaned}.`;
-    } else {
-      return `Menunjukkan kemauan belajar, namun sangat membutuhkan pendampingan intensif dan bimbingan remedial dalam ${cleaned}.`;
-    }
+    const currentSemester = config?.Semester || "Ganjil";
+    const filteredBank = filterBankTpItems(bankTpList, selectedMapel, selectedKelas, currentSemester);
+    const dynamicDesc = generateDynamicTpDescription(
+      selectedMapel,
+      val,
+      tpText ? [tpText] : [],
+      filteredBank
+    );
+    return dynamicDesc.tinggi;
   };
 
   // Helper for grade badge styling & tier

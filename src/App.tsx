@@ -380,6 +380,18 @@ export default function App() {
         ];
         await batchSaveDocuments(COLLECTIONS.JADWAL, sampleJadwal);
 
+        // Seed default Bank TP if empty
+        if (bankTpList.length === 0) {
+          const sampleBankTp: BankTpItem[] = INITIAL_DEFAULT_TPS.map((item, idx) => ({
+            ...item,
+            id: `tp_std_${idx}_${item.mapel.replace(/\s+/g, "_").toLowerCase()}`,
+            createdBy: "Pemerintah / Kemendikbudristek",
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          }));
+          await batchSaveDocuments(COLLECTIONS.BANK_TP, sampleBankTp);
+        }
+
         if (!config.Nama_Guru) {
           await savePengaturan({ ...DEFAULT_CONFIG, hasInitialSeeded: true });
         } else {

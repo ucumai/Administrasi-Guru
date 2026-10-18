@@ -58,3 +58,47 @@
     padding-top: env(safe-area-inset-top, 0px);
   }
 }
+
+/* Print Styles for F4 / Folio (215mm x 330mm) - 1 Halaman Utuh */
+@media print {
+  @page {
+    size: 215mm 330mm; /* Kertas F4 / Folio Resmi */
+    margin: 8mm 10mm 8mm 10mm;
+  }
+
+  html, body {
+    width: 215mm !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-size: 11px !important;
+  }
+
+  /* Kontainer 1 Lembar Utuh Kertas F4 */
+  .raport-f4-page {
+    width: 195mm !important; /* 215mm - 20mm margin */
+    max-width: 195mm !important;
+    min-height: 310mm !important;
+    max-height: 314mm !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+  }
+
+  .raport-f4-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
+  .raport-print-table th,
+  .raport-print-table td {
+    border-color: #000000 !important;
+  }
+}

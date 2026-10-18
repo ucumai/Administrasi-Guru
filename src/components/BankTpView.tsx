@@ -958,13 +958,13 @@ export const BankTpView: React.FC<BankTpViewProps> = ({
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-blue-100 text-xs font-semibold uppercase tracking-wider">
               <BookmarkCheck className="w-3.5 h-3.5 text-amber-300" />
-              <span>Kurikulum Merdeka • Manajemen Asesmen & Raport</span>
+              <span>Kurikulum Merdeka • Auto-Sync & Smart TP Mapping</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Bank Tujuan Pembelajaran (Bank TP)
             </h1>
             <p className="text-sm sm:text-base text-blue-100/90 leading-relaxed">
-              Simpan utuh seluruh Tujuan Pembelajaran (TP) resmi sekolah ke database cloud. Saat mengisi nilai raport, guru dapat langsung memilih TP dari bank ini atau merumuskan baru dengan bantuan AI secara permanen tanpa takut hilang atau kembali ke default.
+              Pastikan daftar TP per Kelas, Mapel & Semester tersimpan di sini. Sistem akan memfilter TP secara bertingkat dan memetakan deskripsi Capaian Tertinggi & Perlu Bimbingan secara otomatis ke Rapor & Input Penilaian sesuai nilai siswa.
             </p>
           </div>
 

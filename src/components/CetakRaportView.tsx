@@ -65,6 +65,7 @@ import {
   confirmDeleteAlert 
 } from "../lib/swal";
 import Swal from "sweetalert2";
+import { filterBankTpItems, generateDynamicTpDescription } from "../lib/tpUtils";
 
 interface CetakRaportViewProps {
   siswaList: Siswa[];
@@ -244,68 +245,7 @@ export function generateFallbackDeskripsiFromTp(
   tps: string[],
   bankItems?: BankTpItem[]
 ): { tinggi: string; perluBimbingan: string } {
-  const rawList = tps && tps.length > 0 ? tps : (DEFAULT_TP_TEMPLATES[mapel] || [
-    `memahami konsep dasar dan materi pokok ${mapel}`,
-    `menerapkan pemahaman dalam menyelesaikan tugas kontekstual`,
-    `berpikir kritis dan menyajikan hasil telaah secara mandiri`
-  ]);
-
-  let tpBest = "";
-  let tpSecond = "";
-  let tpNeedHelp = "";
-
-  // Prioritize based on Bank TP items and their categorized difficulty if available
-  if (bankItems && bankItems.length > 0) {
-    const tinggiItems = bankItems.filter((b) => b.kategori === "Tinggi");
-    const sedangItems = bankItems.filter((b) => b.kategori === "Sedang");
-    const bimbinganItems = bankItems.filter((b) => b.kategori === "Bimbingan" || b.kategori === "Umum");
-
-    if (nilaiNum >= 90) {
-      tpBest = tinggiItems[0]?.tujuanPembelajaran || rawList[0] || `konsep utama ${mapel}`;
-      tpSecond = tinggiItems[1]?.tujuanPembelajaran || sedangItems[0]?.tujuanPembelajaran || rawList[1] || tpBest;
-      tpNeedHelp = rawList[rawList.length - 1] || `pengayaan materi aplikatif ${mapel}`;
-    } else if (nilaiNum >= 80) {
-      tpBest = sedangItems[0]?.tujuanPembelajaran || tinggiItems[0]?.tujuanPembelajaran || rawList[0] || `konsep dasar ${mapel}`;
-      tpSecond = sedangItems[1]?.tujuanPembelajaran || rawList[1] || tpBest;
-      tpNeedHelp = tinggiItems[0]?.tujuanPembelajaran || rawList[rawList.length - 1] || `materi lanjutan ${mapel}`;
-    } else if (nilaiNum >= 75) {
-      tpBest = bimbinganItems[0]?.tujuanPembelajaran || rawList[0] || `konsep dasar ${mapel}`;
-      tpNeedHelp = sedangItems[0]?.tujuanPembelajaran || tinggiItems[0]?.tujuanPembelajaran || rawList[rawList.length - 1] || `pemecahan masalah ${mapel}`;
-    } else {
-      tpBest = bimbinganItems[0]?.tujuanPembelajaran || rawList[0] || `pengenalan materi ${mapel}`;
-      tpNeedHelp = bimbinganItems[1]?.tujuanPembelajaran || sedangItems[0]?.tujuanPembelajaran || rawList[rawList.length - 1] || `kompetensi dasar ${mapel}`;
-    }
-  }
-
-  if (!tpBest) tpBest = rawList[0] || `konsep utama ${mapel}`;
-  if (!tpSecond) tpSecond = rawList[1] || tpBest;
-  if (!tpNeedHelp) tpNeedHelp = rawList[rawList.length - 1] || `pendalaman materi ${mapel}`;
-
-  const cBest = cleanTpText(tpBest, mapel);
-  const cSecond = cleanTpText(tpSecond, mapel);
-  const cNeedHelp = cleanTpText(tpNeedHelp, mapel);
-
-  if (nilaiNum >= 90) {
-    return {
-      tinggi: `Menunjukkan penguasaan sangat istimewa dalam ${cBest} serta terampil dalam ${cSecond}. Mampu bernalar kritis secara mandiri.`,
-      perluBimbingan: `Pertahankan prestasi unggul dan perluas pengayaan mandiri pada studi kasus aplikatif ${mapel}.`
-    };
-  } else if (nilaiNum >= 80) {
-    return {
-      tinggi: `Menunjukkan penguasaan yang sangat baik dalam ${cBest} dan mampu mengaplikasikan konsep dengan cermat.`,
-      perluBimbingan: `Perlu peningkatan konsistensi dan pendalaman pada ${cNeedHelp}.`
-    };
-  } else if (nilaiNum >= 75) {
-    return {
-      tinggi: `Menunjukkan pemahaman yang cukup baik dan telah mencapai kriteria ketuntasan dalam ${cBest}.`,
-      perluBimbingan: `Perlu pendampingan dan latihan tambahan dalam ${cNeedHelp}.`
-    };
-  } else {
-    return {
-      tinggi: `Menunjukkan kemauan belajar pada pengenalan materi ${cBest}.`,
-      perluBimbingan: `Sangat membutuhkan bimbingan intensif dan remedial terarah dalam ${cNeedHelp}.`
-    };
-  }
+  return generateDynamicTpDescription(mapel, nilaiNum, tps, bankItems);
 }
 
 /**
@@ -1537,11 +1477,10 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
         }
       }
 
-      // Check if we have Bank TP for this mapel
+      // Filter Bank TP for this mapel, class, and active semester
+      const mapelBankItems = filterBankTpItems(bankTpList, mapel, selectedKelas, currentPeriodeInfo.semester);
       const availableTps = effectiveTpBank[mapel] || DEFAULT_TP_TEMPLATES[mapel] || [];
-      const desc = availableTps.length > 0
-        ? generateFallbackDeskripsiFromTp(mapel, finalVal, availableTps)
-        : generateDefaultDeskripsi(mapel, finalVal);
+      const desc = generateFallbackDeskripsiFromTp(mapel, finalVal, availableTps, mapelBankItems);
 
       return {
         mapel,
