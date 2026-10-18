@@ -5,6 +5,7 @@ export interface User {
   username: string;
   password?: string;
   nama: string;
+  name?: string;
   nip?: string;
   role: RoleUser;
   kelasUtama?: string; // For guru_kelas, e.g. "Kelas 1", "VII A"
@@ -186,6 +187,10 @@ export interface Pengaturan {
   Tempat_Tanda_Tangan: string;
   Logo_Kiri: string;
   Logo_Kanan: string;
+  Nama_Kepala_Sekolah?: string;
+  NIP_Kepala_Sekolah?: string;
+  Tahun_Ajaran?: string;
+  Semester?: string;
   Logo_Tinggi?: number;
   Dinas?: string;
   NPSN?: string;
@@ -345,6 +350,8 @@ export interface RaportSiswaData {
   statusKenaikan: 'Naik Kelas' | 'Tidak Naik Kelas' | 'Lulus' | 'Belum Ditentukan' | string;
   keKelas: string;
   tanggalKenaikan: string;
+  tanggalRaport?: string;
+  tempatTitimangsa?: string;
 }
 
 export type PeriodeRaportType = 

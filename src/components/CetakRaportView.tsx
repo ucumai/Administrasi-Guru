@@ -1444,7 +1444,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
         (b.id === primaryDocId || b.id === altDocId1 || b.id === altDocId2 || b.id === altDocId3 || (b.idSiswa === siswa.id && (b.periode === selectedPeriode || !b.periode))) &&
         Array.isArray(b.nilaiMapel) &&
         b.nilaiMapel.length > 0
-    ) as RaportRecord | undefined;
+    ) as unknown as RaportRecord | undefined;
 
     if (existingBiDoc && Array.isArray(existingBiDoc.nilaiMapel) && existingBiDoc.nilaiMapel.length > 0) {
       return {
@@ -5147,7 +5147,7 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
                               const score = tpPickerState.studentNilai ?? 80;
                               const isHighRec = score >= 85 && (matchedBankItem?.kategori === "Tinggi" || idx === 0);
                               const isMidRec = score >= 75 && score < 85 && (matchedBankItem?.kategori === "Sedang" || idx <= 1);
-                              const isRemedialRec = score < 75 && (matchedBankItem?.kategori === "Dasar" || matchedBankItem?.kategori === "Remedial" || idx === allTpTexts.length - 1);
+                              const isRemedialRec = score < 75 && ((matchedBankItem?.kategori as string) === "Dasar" || (matchedBankItem?.kategori as string) === "Remedial" || idx === allTpTexts.length - 1);
                               if (isHighRec || isMidRec || isRemedialRec) {
                                 return (
                                   <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 font-extrabold flex items-center gap-1 shadow-2xs">
