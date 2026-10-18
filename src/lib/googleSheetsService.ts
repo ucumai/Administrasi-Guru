@@ -583,24 +583,59 @@ export async function parseAndRestoreExcelBackup(file: File): Promise<RestoreSum
     pengaturanUpdated: false,
   };
 
+  const safeStr = (val: any): string => {
+    if (val === null || val === undefined) return "";
+    return String(val).trim();
+  };
+
+  const configObj: Partial<Pengaturan> = {};
+
   for (const sheetName of wb.SheetNames) {
     const ws = wb.Sheets[sheetName];
     if (!ws) continue;
-    const jsonRows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
-    if (!jsonRows || jsonRows.length === 0) continue;
 
-    const lowerSheet = sheetName.toLowerCase().replace(/[^a-z0-9]/g, "");
+    // Get 2D array representation for flexible key-value and row scanning
+    const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+    if (!rawRows || rawRows.length === 0) continue;
+
+    const lowerSheetName = safeStr(sheetName).toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    // A. Key-Value & Summary Parser (Scans key-value pairs in 2D rows for School Settings)
+    rawRows.forEach((row) => {
+      if (!Array.isArray(row) || row.length < 2) return;
+      const keyStr = safeStr(row[0]).toLowerCase();
+      const valStr = safeStr(row[1]);
+
+      if (keyStr.includes("nama sekolah") || keyStr === "nama sekolah") {
+        configObj.Nama_Sekolah = valStr;
+      } else if (keyStr.includes("kepala sekolah") || keyStr === "kepala sekolah") {
+        configObj.Nama_Kepsek = valStr;
+      } else if (keyStr.includes("nip kepala") || keyStr.includes("nip kepsek")) {
+        configObj.NIP_Kepsek = valStr;
+      } else if (keyStr.includes("guru kelas") || keyStr.includes("admin") || keyStr.includes("nama guru")) {
+        configObj.Nama_Guru = valStr;
+      } else if (keyStr.includes("pemerintah")) {
+        configObj.Pemerintah = valStr;
+      } else if (keyStr.includes("alamat")) {
+        configObj.Alamat_Sekolah = valStr;
+      }
+    });
+
+    // Get Object-based rows using first row as headers
+    const objectRows: Record<string, any>[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+    // B. Table Parsers based on Sheet Name or Column Headers
 
     // 1. Data Siswa
-    if (lowerSheet.includes("siswa") || lowerSheet.includes("datasiswa")) {
-      const siswaItems: Siswa[] = jsonRows
-        .filter((r) => r["Nama"] || r["nama"] || r["Nama Siswa"])
+    if (lowerSheetName.includes("siswa")) {
+      const siswaItems: Siswa[] = objectRows
+        .filter((r) => r && typeof r === "object" && (r["Nama"] || r["nama"] || r["Nama Siswa"]))
         .map((r, idx) => ({
-          id: r["id"] || r["ID"] || `sis_ex_${Date.now()}_${idx}`,
-          nisn: String(r["NISN"] || r["nisn"] || "").trim(),
-          nis: String(r["NIS"] || r["nis"] || "").trim(),
-          nama: String(r["Nama"] || r["nama"] || r["Nama Siswa"] || "").trim(),
-          kelas: String(r["Kelas"] || r["kelas"] || "Kelas 4").trim(),
+          id: safeStr(r["id"] || r["ID"]) || `sis_ex_${Date.now()}_${idx}`,
+          nisn: safeStr(r["NISN"] || r["nisn"]),
+          nis: safeStr(r["NIS"] || r["nis"]),
+          nama: safeStr(r["Nama"] || r["nama"] || r["Nama Siswa"]),
+          kelas: safeStr(r["Kelas"] || r["kelas"]) || "Kelas 4",
         }));
 
       if (siswaItems.length > 0) {
@@ -609,17 +644,17 @@ export async function parseAndRestoreExcelBackup(file: File): Promise<RestoreSum
       }
     }
 
-    // 2. Guru / User
-    else if (lowerSheet.includes("guru") || lowerSheet.includes("user") || lowerSheet.includes("daftarguru")) {
-      const userItems: User[] = jsonRows
-        .filter((r) => r["Username"] || r["username"] || r["Nama"])
+    // 2. Daftar Guru & User
+    else if (lowerSheetName.includes("guru") || lowerSheetName.includes("user")) {
+      const userItems: User[] = objectRows
+        .filter((r) => r && typeof r === "object" && (r["Username"] || r["username"] || r["Nama"]))
         .map((r, idx) => ({
-          id: r["id"] || r["ID"] || `usr_ex_${Date.now()}_${idx}`,
-          username: String(r["Username"] || r["username"] || `user_${idx}`).trim(),
-          nama: String(r["Nama"] || r["nama"] || "").trim(),
-          nip: String(r["NIP"] || r["nip"] || "-").trim(),
-          role: (r["Role"] || r["role"] || "guru_kelas") as any,
-          kelasUtama: String(r["Kelas"] || r["kelas"] || "").trim(),
+          id: safeStr(r["id"] || r["ID"]) || `usr_ex_${Date.now()}_${idx}`,
+          username: safeStr(r["Username"] || r["username"]) || `user_${idx}`,
+          nama: safeStr(r["Nama"] || r["nama"]),
+          nip: safeStr(r["NIP"] || r["nip"]) || "-",
+          role: (safeStr(r["Role"] || r["role"]) as any) || "guru_kelas",
+          kelasUtama: safeStr(r["Kelas"] || r["kelas"]),
         }));
 
       if (userItems.length > 0) {
@@ -629,21 +664,21 @@ export async function parseAndRestoreExcelBackup(file: File): Promise<RestoreSum
     }
 
     // 3. Log Absensi
-    else if (lowerSheet.includes("absensi") || lowerSheet.includes("logabsensi")) {
-      const absensiItems: LogAbsensi[] = jsonRows
-        .filter((r) => r["Siswa"] || r["namaSiswa"] || r["Nama Siswa"])
+    else if (lowerSheetName.includes("absensi")) {
+      const absensiItems: LogAbsensi[] = objectRows
+        .filter((r) => r && typeof r === "object" && (r["Siswa"] || r["namaSiswa"] || r["Nama Siswa"]))
         .map((r, idx) => ({
-          id: r["id"] || r["ID"] || `abs_ex_${Date.now()}_${idx}`,
-          tanggal: String(r["Tanggal"] || r["tanggal"] || new Date().toISOString().split("T")[0]).trim(),
-          waktu: String(r["Waktu"] || r["waktu"] || new Date().toISOString().split("T")[0]).trim(),
-          idSiswa: String(r["idSiswa"] || r["ID Siswa"] || `s_${idx}`).trim(),
-          namaSiswa: String(r["Siswa"] || r["namaSiswa"] || r["Nama Siswa"] || "").trim(),
-          kelas: String(r["Kelas"] || r["kelas"] || "Kelas 4").trim(),
-          mapel: String(r["Mapel"] || r["mapel"] || "Umum").trim(),
-          status: (r["Status"] || r["status"] || "Hadir") as any,
-          bulan: String(r["Bulan"] || r["bulan"] || "").trim(),
-          tahun: String(r["Tahun"] || r["tahun"] || "").trim(),
-          namaGuru: String(r["Guru"] || r["namaGuru"] || "-").trim(),
+          id: safeStr(r["id"] || r["ID"]) || `abs_ex_${Date.now()}_${idx}`,
+          tanggal: safeStr(r["Tanggal"] || r["tanggal"]) || new Date().toISOString().split("T")[0],
+          waktu: safeStr(r["Waktu"] || r["waktu"]) || new Date().toISOString().split("T")[0],
+          idSiswa: safeStr(r["idSiswa"] || r["ID Siswa"]) || `s_${idx}`,
+          namaSiswa: safeStr(r["Siswa"] || r["namaSiswa"] || r["Nama Siswa"]),
+          kelas: safeStr(r["Kelas"] || r["kelas"]) || "Kelas 4",
+          mapel: safeStr(r["Mapel"] || r["mapel"]) || "Umum",
+          status: (safeStr(r["Status"] || r["status"]) as any) || "Hadir",
+          bulan: safeStr(r["Bulan"] || r["bulan"]),
+          tahun: safeStr(r["Tahun"] || r["tahun"]),
+          namaGuru: safeStr(r["Guru"] || r["namaGuru"]) || "-",
         }));
 
       if (absensiItems.length > 0) {
@@ -653,21 +688,21 @@ export async function parseAndRestoreExcelBackup(file: File): Promise<RestoreSum
     }
 
     // 4. Data Nilai
-    else if (lowerSheet.includes("nilai") || lowerSheet.includes("datanilai")) {
-      const nilaiItems: DataNilai[] = jsonRows
-        .filter((r) => r["Siswa"] || r["namaSiswa"] || r["Nilai"] || r["nilai"])
+    else if (lowerSheetName.includes("nilai")) {
+      const nilaiItems: DataNilai[] = objectRows
+        .filter((r) => r && typeof r === "object" && (r["Siswa"] || r["namaSiswa"] || r["Nilai"] || r["nilai"]))
         .map((r, idx) => ({
-          id: r["id"] || r["ID"] || `nil_ex_${Date.now()}_${idx}`,
-          waktu: String(r["Waktu"] || r["waktu"] || new Date().toISOString().split("T")[0]).trim(),
-          idSiswa: String(r["idSiswa"] || r["ID Siswa"] || `s_${idx}`).trim(),
-          namaSiswa: String(r["Siswa"] || r["namaSiswa"] || "").trim(),
-          kelas: String(r["Kelas"] || r["kelas"] || "").trim(),
-          mapel: String(r["Mapel"] || r["mapel"] || "").trim(),
-          jenis: String(r["Jenis"] || r["jenis"] || "UH1").trim(),
+          id: safeStr(r["id"] || r["ID"]) || `nil_ex_${Date.now()}_${idx}`,
+          waktu: safeStr(r["Waktu"] || r["waktu"]) || new Date().toISOString().split("T")[0],
+          idSiswa: safeStr(r["idSiswa"] || r["ID Siswa"]) || `s_${idx}`,
+          namaSiswa: safeStr(r["Siswa"] || r["namaSiswa"]),
+          kelas: safeStr(r["Kelas"] || r["kelas"]),
+          mapel: safeStr(r["Mapel"] || r["mapel"]),
+          jenis: safeStr(r["Jenis"] || r["jenis"]) || "UH1",
           nilai: Number(r["Nilai"] || r["nilai"]) || 0,
-          tp: String(r["TP"] || r["tp"] || "").trim(),
-          deskripsi: String(r["Deskripsi"] || r["deskripsi"] || "").trim(),
-          namaGuru: String(r["Guru"] || r["namaGuru"] || "-").trim(),
+          tp: safeStr(r["TP"] || r["tp"]),
+          deskripsi: safeStr(r["Deskripsi"] || r["deskripsi"]),
+          namaGuru: safeStr(r["Guru"] || r["namaGuru"]) || "-",
         }));
 
       if (nilaiItems.length > 0) {
@@ -677,15 +712,15 @@ export async function parseAndRestoreExcelBackup(file: File): Promise<RestoreSum
     }
 
     // 5. Jadwal Pelajaran
-    else if (lowerSheet.includes("jadwal") || lowerSheet.includes("jadwalpelajaran")) {
-      const jadwalItems: Jadwal[] = jsonRows
-        .filter((r) => r["Hari"] || r["hari"] || r["Mapel"])
+    else if (lowerSheetName.includes("jadwal")) {
+      const jadwalItems: Jadwal[] = objectRows
+        .filter((r) => r && typeof r === "object" && (r["Hari"] || r["hari"] || r["Mapel"]))
         .map((r, idx) => ({
-          id: r["id"] || r["ID"] || `jdw_ex_${Date.now()}_${idx}`,
-          hari: String(r["Hari"] || r["hari"] || "Senin").trim(),
-          jam: String(r["Jam"] || r["jam"] || "07.00 - 08.00").trim(),
-          kelas: String(r["Kelas"] || r["kelas"] || "").trim(),
-          mapel: String(r["Mapel"] || r["mapel"] || "").trim(),
+          id: safeStr(r["id"] || r["ID"]) || `jdw_ex_${Date.now()}_${idx}`,
+          hari: safeStr(r["Hari"] || r["hari"]) || "Senin",
+          jam: safeStr(r["Jam"] || r["jam"]) || "07.00 - 08.00",
+          kelas: safeStr(r["Kelas"] || r["kelas"]),
+          mapel: safeStr(r["Mapel"] || r["mapel"]),
         }));
 
       if (jadwalItems.length > 0) {
@@ -695,18 +730,18 @@ export async function parseAndRestoreExcelBackup(file: File): Promise<RestoreSum
     }
 
     // 6. Tabungan Kelas
-    else if (lowerSheet.includes("tabungan") || lowerSheet.includes("tabungankelas")) {
-      const tabunganItems: TabunganKelas[] = jsonRows
-        .filter((r) => r["Siswa"] || r["namaSiswa"] || r["Jumlah"] || r["jumlah"])
+    else if (lowerSheetName.includes("tabungan")) {
+      const tabunganItems: TabunganKelas[] = objectRows
+        .filter((r) => r && typeof r === "object" && (r["Siswa"] || r["namaSiswa"] || r["Jumlah"] || r["jumlah"]))
         .map((r, idx) => ({
-          id: r["id"] || r["ID"] || `tbg_ex_${Date.now()}_${idx}`,
-          tanggal: String(r["Tanggal"] || r["tanggal"] || new Date().toISOString().split("T")[0]).trim(),
-          idSiswa: String(r["idSiswa"] || `s_${idx}`).trim(),
-          namaSiswa: String(r["Siswa"] || r["namaSiswa"] || "").trim(),
-          kelas: String(r["Kelas"] || r["kelas"] || "").trim(),
-          jenis: (r["Jenis"] || r["jenis"] || "Setor") as any,
+          id: safeStr(r["id"] || r["ID"]) || `tbg_ex_${Date.now()}_${idx}`,
+          tanggal: safeStr(r["Tanggal"] || r["tanggal"]) || new Date().toISOString().split("T")[0],
+          idSiswa: safeStr(r["idSiswa"]) || `s_${idx}`,
+          namaSiswa: safeStr(r["Siswa"] || r["namaSiswa"]),
+          kelas: safeStr(r["Kelas"] || r["kelas"]),
+          jenis: (safeStr(r["Jenis"] || r["jenis"]) as any) || "Setor",
           jumlah: Number(r["Jumlah"] || r["jumlah"]) || 0,
-          keterangan: String(r["Keterangan"] || r["keterangan"] || "-").trim(),
+          keterangan: safeStr(r["Keterangan"] || r["keterangan"]) || "-",
         }));
 
       if (tabunganItems.length > 0) {
@@ -714,29 +749,15 @@ export async function parseAndRestoreExcelBackup(file: File): Promise<RestoreSum
         summary.tabunganCount += tabunganItems.length;
       }
     }
+  }
 
-    // 7. Pengaturan Aplikasi / Informasi Cadangan
-    else if (lowerSheet.includes("pengaturan") || lowerSheet.includes("info") || lowerSheet.includes("ringkasan")) {
-      const configObj: Partial<Pengaturan> = {};
-      jsonRows.forEach((r) => {
-        const k = String(r["Kunci"] || r["Key"] || r["Informasi"] || r[Object.keys(r)[0]] || "").trim();
-        const v = String(r["Nilai"] || r["Value"] || r[Object.keys(r)[1]] || "").trim();
-
-        if (k.toLowerCase().includes("sekolah")) configObj.Nama_Sekolah = v;
-        if (k.toLowerCase().includes("kepala") || k.toLowerCase().includes("kepsek")) configObj.Nama_Kepsek = v;
-        if (k.toLowerCase().includes("nip kepala") || k.toLowerCase().includes("nip kepsek")) configObj.NIP_Kepsek = v;
-        if (k.toLowerCase().includes("guru") || k.toLowerCase().includes("admin")) configObj.Nama_Guru = v;
-        if (k.toLowerCase().includes("pemerintah")) configObj.Pemerintah = v;
-        if (k.toLowerCase().includes("alamat")) configObj.Alamat_Sekolah = v;
-      });
-
-      if (Object.keys(configObj).length > 0) {
-        await savePengaturan(configObj as Pengaturan);
-        summary.pengaturanUpdated = true;
-      }
-    }
+  // Save parsed configuration if any school fields were extracted
+  if (Object.keys(configObj).length > 0) {
+    await savePengaturan(configObj as Pengaturan);
+    summary.pengaturanUpdated = true;
   }
 
   return summary;
 }
+
 
