@@ -1,16 +1,17 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig } from 'vite';
 
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './src'),
-        '~': path.resolve(__dirname, '.'),
-      },
+      alias: [
+        { find: /^@\/src\/(.*)/, replacement: path.resolve(__dirname, './src/$1') },
+        { find: /^@\/(.*)/, replacement: path.resolve(__dirname, './src/$1') },
+        { find: '~', replacement: path.resolve(__dirname, '.') }
+      ]
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
@@ -21,7 +22,7 @@ export default defineConfig(() => {
       sourcemap: false, // Prevent publishing original source code via source maps
       minify: 'esbuild' as const,
       cssMinify: true,
-      chunkSizeWarningLimit: 1500,
+      chunkSizeWarningLimit: 2500,
     },
   };
 });
