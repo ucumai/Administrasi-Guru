@@ -34,7 +34,6 @@ import {
 import { Pengaturan, User, RoleUser } from "../types";
 import { savePengaturan, saveDocument, deleteDocument, COLLECTIONS } from "../lib/firebase";
 import { compressImage } from "../lib/imageCompressor";
-import { FirestoreQuotaOptimizerCard } from "./FirestoreQuotaOptimizerCard";
 import { THEME_PRESETS, applyGlobalTheme } from "../lib/themeManager";
 import { 
   notifySimpanSuccess, 
