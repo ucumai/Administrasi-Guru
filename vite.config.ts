@@ -18,6 +18,16 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     cssMinify: true,
-    chunkSizeWarningLimit: 3000,
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+          'vendor-pdf-excel': ['jspdf', 'jspdf-autotable', 'xlsx', 'pptxgenjs'],
+          'vendor-ui': ['lucide-react', 'sweetalert2', 'canvas-confetti', 'motion', 'recharts'],
+        },
+      },
+    },
   },
 });
