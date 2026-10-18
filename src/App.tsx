@@ -206,45 +206,67 @@ export default function App() {
     });
   }, []);
 
-  // Cross-Device Cloud Auto-Seed: Ensure Cloud Firestore is populated with default data for any device/URL access
+  // Safe One-Time Cloud Auto-Seed: Populate initial default data ONLY if Cloud Firestore is completely empty
   useEffect(() => {
-    const seedTimer = setTimeout(async () => {
-      if (siswaList.length === 0) {
-        const restored = await autoFallbackFromGoogleSheetsOrSnapshot();
-        
-        if (!restored) {
-          const defaultStudents: Siswa[] = [
-            { id: "s_101", nisn: "0123456781", nis: "2024001", nama: "Ahmad Rizky Pratama", kelas: "Kelas 4", jenisKelamin: "L", tempatLahir: "Bogor", tanggalLahir: "2015-05-12", agama: "Islam", namaAyah: "Budi Pratama", namaIbu: "Siti Rahma", pekerjaanAyah: "Wiraswasta", pekerjaanIbu: "Ibu Rumah Tangga", alamat: "Kp. Babakan Kulon RT 01/02" },
-            { id: "s_102", nisn: "0123456782", nis: "2024002", nama: "Aisyah Nabila Putri", kelas: "Kelas 4", jenisKelamin: "P", tempatLahir: "Jakarta", tanggalLahir: "2015-08-20", agama: "Islam", namaAyah: "Rahmat Hidayat", namaIbu: "Nurhaliza", pekerjaanAyah: "PNS", pekerjaanIbu: "Guru", alamat: "Kp. Babakan RT 02/02" },
-            { id: "s_103", nisn: "0123456783", nis: "2024003", nama: "Bintang Satria Perdana", kelas: "Kelas 4", jenisKelamin: "L", tempatLahir: "Bandung", tanggalLahir: "2015-03-15", agama: "Islam", namaAyah: "Hendrawan", namaIbu: "Dewi Lestari", pekerjaanAyah: "Karyawan Swasta", pekerjaanIbu: "Wiraswasta", alamat: "Kp. Ciseeng RT 03/01" },
-            { id: "s_104", nisn: "0123456784", nis: "2024004", nama: "Clarissa Putri Kirana", kelas: "Kelas 4", jenisKelamin: "P", tempatLahir: "Bogor", tanggalLahir: "2015-11-04", agama: "Islam", namaAyah: "Agus Santoso", namaIbu: "Ratna Sari", pekerjaanAyah: "Wiraswasta", pekerjaanIbu: "Ibu Rumah Tangga", alamat: "Kp. Babakan Kulon RT 04/02" },
-            { id: "s_105", nisn: "0123456785", nis: "2024005", nama: "Daffa Ibnu Hafizh", kelas: "Kelas 4", jenisKelamin: "L", tempatLahir: "Depok", tanggalLahir: "2015-01-28", agama: "Islam", namaAyah: "Zulkifli", namaIbu: "Sari Utami", pekerjaanAyah: "TNI", pekerjaanIbu: "Bidan", alamat: "Kp. Parung RT 01/01" }
-          ];
+    let isMounted = true;
+    const checkAndSeedCloudDatabase = async () => {
+      try {
+        const isCleared = localStorage.getItem("edadmin_database_cleared") === "true";
+        if (isCleared) return;
 
-          const defaultMapels: Mapel[] = [
-            { id: "m_1", namaMapel: "Pendidikan Agama dan Budi Pekerti", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
-            { id: "m_2", namaMapel: "Pendidikan Pancasila", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
-            { id: "m_3", namaMapel: "Bahasa Indonesia", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
-            { id: "m_4", namaMapel: "Matematika", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
-            { id: "m_5", namaMapel: "Ilmu Pengetahuan Alam dan Sosial (IPAS)", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
-            { id: "m_6", namaMapel: "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
-            { id: "m_7", namaMapel: "Seni Budaya dan Prakarya", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
-            { id: "m_8", namaMapel: "Bahasa Inggris", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
-            { id: "m_9", namaMapel: "Muatan Lokal (Bahasa Daerah)", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" }
-          ];
+        // Query server directly to verify if Cloud Firestore has any existing student data
+        const siswaSnap = await getDocs(collection(firestore, COLLECTIONS.SISWA));
+        if (!isMounted) return;
 
-          try {
-            await batchSaveDocuments(COLLECTIONS.SISWA, defaultStudents);
-            await batchSaveDocuments(COLLECTIONS.MAPEL, defaultMapels);
-            await savePengaturan(DEFAULT_CONFIG);
-          } catch (e) {
-            console.warn("Cloud Firestore auto-seed notice:", e);
+        if (siswaSnap.empty) {
+          // Cloud Firestore is completely empty! Restore from Sheets or seed initial default master data
+          const restored = await autoFallbackFromGoogleSheetsOrSnapshot();
+          if (!restored && isMounted) {
+            const defaultStudents: Siswa[] = [
+              { id: "s_101", nisn: "0123456781", nis: "2024001", nama: "Ahmad Rizky Pratama", kelas: "Kelas 4", jenisKelamin: "L", tempatLahir: "Bogor", tanggalLahir: "2015-05-12", agama: "Islam", namaAyah: "Budi Pratama", namaIbu: "Siti Rahma", pekerjaanAyah: "Wiraswasta", pekerjaanIbu: "Ibu Rumah Tangga", alamat: "Kp. Babakan Kulon RT 01/02" },
+              { id: "s_102", nisn: "0123456782", nis: "2024002", nama: "Aisyah Nabila Putri", kelas: "Kelas 4", jenisKelamin: "P", tempatLahir: "Jakarta", tanggalLahir: "2015-08-20", agama: "Islam", namaAyah: "Rahmat Hidayat", namaIbu: "Nurhaliza", pekerjaanAyah: "PNS", pekerjaanIbu: "Guru", alamat: "Kp. Babakan RT 02/02" },
+              { id: "s_103", nisn: "0123456783", nis: "2024003", nama: "Bintang Satria Perdana", kelas: "Kelas 4", jenisKelamin: "L", tempatLahir: "Bandung", tanggalLahir: "2015-03-15", agama: "Islam", namaAyah: "Hendrawan", namaIbu: "Dewi Lestari", pekerjaanAyah: "Karyawan Swasta", pekerjaanIbu: "Wiraswasta", alamat: "Kp. Ciseeng RT 03/01" },
+              { id: "s_104", nisn: "0123456784", nis: "2024004", nama: "Clarissa Putri Kirana", kelas: "Kelas 4", jenisKelamin: "P", tempatLahir: "Bogor", tanggalLahir: "2015-11-04", agama: "Islam", namaAyah: "Agus Santoso", namaIbu: "Ratna Sari", pekerjaanAyah: "Wiraswasta", pekerjaanIbu: "Ibu Rumah Tangga", alamat: "Kp. Babakan Kulon RT 04/02" },
+              { id: "s_105", nisn: "0123456785", nis: "2024005", nama: "Daffa Ibnu Hafizh", kelas: "Kelas 4", jenisKelamin: "L", tempatLahir: "Depok", tanggalLahir: "2015-01-28", agama: "Islam", namaAyah: "Zulkifli", namaIbu: "Sari Utami", pekerjaanAyah: "TNI", pekerjaanIbu: "Bidan", alamat: "Kp. Parung RT 01/01" }
+            ];
+
+            const defaultMapels: Mapel[] = [
+              { id: "m_1", namaMapel: "Pendidikan Agama dan Budi Pekerti", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
+              { id: "m_2", namaMapel: "Pendidikan Pancasila", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
+              { id: "m_3", namaMapel: "Bahasa Indonesia", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
+              { id: "m_4", namaMapel: "Matematika", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
+              { id: "m_5", namaMapel: "Ilmu Pengetahuan Alam dan Sosial (IPAS)", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
+              { id: "m_6", namaMapel: "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
+              { id: "m_7", namaMapel: "Seni Budaya dan Prakarya", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
+              { id: "m_8", namaMapel: "Bahasa Inggris", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" },
+              { id: "m_9", namaMapel: "Muatan Lokal (Bahasa Daerah)", kktp: 75, semester: "Ganjil", tahunAjaran: "2024/2025" }
+            ];
+
+            const defaultBankTps = INITIAL_DEFAULT_TPS.map((item, idx) => ({
+              ...item,
+              id: `tp_init_${idx + 1}`
+            }));
+
+            try {
+              await batchSaveDocuments(COLLECTIONS.SISWA, defaultStudents);
+              await batchSaveDocuments(COLLECTIONS.MAPEL, defaultMapels);
+              await batchSaveDocuments(COLLECTIONS.BANK_TP, defaultBankTps as any);
+              await savePengaturan(DEFAULT_CONFIG);
+            } catch (e) {
+              console.warn("Cloud Firestore initial auto-seed notice:", e);
+            }
           }
         }
+      } catch (err) {
+        console.warn("Could not check Cloud Firestore status for seeding:", err);
       }
-    }, 2000);
-    return () => clearTimeout(seedTimer);
-  }, [siswaList.length]);
+    };
+
+    checkAndSeedCloudDatabase();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const [config, setConfig] = useState<Pengaturan>(DEFAULT_CONFIG);
 

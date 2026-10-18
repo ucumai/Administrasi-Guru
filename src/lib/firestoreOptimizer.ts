@@ -58,7 +58,7 @@ export function getSyncMode(): SyncMode {
       return saved;
     }
   } catch {}
-  return "auto"; // Default: Otomatis Anti-Limit
+  return "realtime"; // Default: Realtime Multi-User Sync across all devices
 }
 
 export function setSyncMode(mode: SyncMode) {
